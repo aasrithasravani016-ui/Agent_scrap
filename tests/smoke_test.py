@@ -222,13 +222,15 @@ def _():
 
 
 # ----- Vendor scraper imports -----
-@check("scrapers: all 10 vendor classes importable")
+@check("scrapers: core vendor classes importable")
 def _():
-    from scrapers import REGISTRY
-    assert len(REGISTRY) == 10
+    from scrapers import REGISTRY, BaseScraper
+    assert len(REGISTRY) >= 10
     for name in ("ubiquiti", "mikrotik", "tplink", "netgear", "arista",
                  "dell", "nvidia", "aruba", "juniper", "cisco"):
         assert name in REGISTRY, f"Missing scraper: {name}"
+    for name, cls in REGISTRY.items():
+        assert issubclass(cls, BaseScraper), f"{name} not a BaseScraper"
 
 
 @check("scrapers: every vendor scraper instantiates")
