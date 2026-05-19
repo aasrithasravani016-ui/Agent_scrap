@@ -208,12 +208,17 @@ def upsert_records(records: list[SpecRecord]) -> int:
             (d["vendor"], d["model"])
         ).fetchone()
         if existing:
-            sets = ",".join(f"{k}=?" for k in d if k not in ("vendor", "model"))
-            vals = [v for k, v in d.items() if k not in ("vendor", "model")]
-            con.execute(
-                f"UPDATE switches SET {sets} WHERE id=?",
-                vals + [existing["id"]]
-            )
+            # Only overwrite columns the scraper actually produced a value
+            # for. A partial re-scrape must not blank existing fields
+            # (e.g. clobber a good image_url with NULL).
+            upd = {k: v for k, v in d.items()
+                   if k not in ("vendor", "model") and v not in (None, "")}
+            if upd:
+                sets = ",".join(f"{k}=?" for k in upd)
+                con.execute(
+                    f"UPDATE switches SET {sets} WHERE id=?",
+                    list(upd.values()) + [existing["id"]]
+                )
         else:
             keys = ",".join(d.keys())
             qs = ",".join("?" * len(d))

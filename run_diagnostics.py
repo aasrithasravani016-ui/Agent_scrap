@@ -169,7 +169,9 @@ def run_cmd(cmd, timeout=60, cwd=None):
 
 def cli_lookup(query, *, timeout=15, verbose=False, no_live=False, firmware=None):
     cmd = [sys.executable, "cli.py"]
-    if verbose: cmd.append("-v")
+    # NOTE: this cli.py has no -v/--verbose flag; passing it makes argparse
+    # exit 2 ("unrecognized arguments: -v") and every lookup falsely FAILs.
+    _ = verbose  # accepted for API compatibility, intentionally unused
     if no_live: cmd.append("--no-live")
     if firmware:
         cmd.extend(["--firmware", query, firmware])

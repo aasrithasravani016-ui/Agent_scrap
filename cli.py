@@ -87,7 +87,17 @@ def main() -> None:
     p.add_argument("--firmware", nargs=2, metavar=("MODEL", "VERSION"),
                    help="Firmware advice: what changed since the given "
                         "version for this model")
+    p.add_argument("-v", "--verbose", action="store_true",
+                   help="Enable debug logging (live fallback, scrapers)")
     args = p.parse_args()
+
+    if args.verbose:
+        try:
+            from logging_config import setup_logging
+            setup_logging(verbose=True)
+        except Exception:
+            import logging
+            logging.basicConfig(level=logging.DEBUG)
 
     agent = SpecAgent(live=not args.no_live)
 
