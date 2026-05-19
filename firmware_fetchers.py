@@ -209,31 +209,31 @@ class CumulusFirmwareFetcher(BaseFirmwareFetcher):
     NOTES_INDEX = "https://docs.nvidia.com/networking-ethernet-software/"
 
     def fetch(self) -> Iterator[FirmwareRecord]:
-        # NVIDIA's docs site uses heavy JS. Fall back to GitHub API for SONiC,
-        # which is purely structured JSON.
+        # NVIDIA's docs are a JS-nav Hugo site: only the current version
+        # slug appears in static HTML, and there are no machine-readable
+        # release notes. Honest behaviour: record the discoverable
+        # version(s) as a *pointer* to the official notes — no fabricated
+        # changelog content.
         text = self.http.get_text(self.NOTES_INDEX)
         if not text:
             logger.info("Cumulus docs page unreachable - skipping")
             return
 
-        # Find Cumulus version links: /cumulus-linux-X.Y/
-        version_pages = set(re.findall(
-            r"/cumulus-linux-(\d+\.\d+)/",
-            text,
-        ))
-        for ver in version_pages:
-            rec = FirmwareRecord(
+        # Slugs look like cumulus-linux-516 (=5.16), -510 (=5.10), -57 (=5.7)
+        slugs = set(re.findall(r"cumulus-linux-(\d{2,3})/", text))
+        for slug in slugs:
+            ver = f"{slug[0]}.{int(slug[1:])}" if len(slug) > 1 else slug
+            yield FirmwareRecord(
                 vendor=self.VENDOR,
                 nos=self.NOS,
                 version=ver,
+                train="stable",
+                is_recommended=True,
                 release_notes_url=(
                     f"https://docs.nvidia.com/networking-ethernet-software/"
-                    f"cumulus-linux-{ver}/Whats-New/"
+                    f"cumulus-linux-{slug}/Whats-New/"
                 ),
             )
-            # We don't parse contents (JS-rendered); just record the version.
-            # User can click through for full details.
-            yield rec
 
 
 # ---------------------------------------------------------------------------
@@ -246,25 +246,52 @@ class UbiquitiFirmwareFetcher(BaseFirmwareFetcher):
     """
     VENDOR = "Ubiquiti"
     NOS = "UniFi OS"
-    INDEX = "https://community.ui.com/releases?platform=unifi-switching"
+    # community.ui.com is a CSRF-protected SPA (no static notes). The
+    # firmware update service IS a public JSON API — it has versions +
+    # release dates but no changelog text, so we emit honest version
+    # pointers (no fabricated diffs); link users to the official notes.
+    API = ("https://fw-update.ui.com/api/firmware"
+           "?filter=eq~~channel~~release&limit=2000")
+    NOTES = "https://community.ui.com/releases?platform=unifi-switching"
+    # UniFi switch firmware platform prefixes
+    SWITCH_PREFIXES = ("US", "USL", "USW", "USC", "USXG", "USAGG", "S2")
 
     def fetch(self) -> Iterator[FirmwareRecord]:
-        text = self.http.get_text(self.INDEX)
-        if not text:
-            logger.info("UniFi releases page unreachable")
+        import json as _json
+        raw = self.http.get_text(self.API)
+        if not raw:
+            logger.info("UniFi firmware API unreachable")
+            return
+        try:
+            fw = _json.loads(raw).get("_embedded", {}).get("firmware", [])
+        except ValueError:
+            logger.info("UniFi firmware API returned non-JSON")
             return
 
-        # Look for version strings in release titles, e.g. "UniFi Switch 7.0.95"
-        versions = set(re.findall(
-            r"UniFi (?:Switch|Network) (?:Application )?(\d+\.\d+\.\d+)",
-            text,
-        ))
-        for ver in sorted(versions, key=lambda v: parse_version(v) or v):
+        # Keep UniFi switch firmware; collapse the "+build" suffix.
+        best: dict[str, dict] = {}
+        for f in fw:
+            plat = (f.get("platform") or "")
+            prod = (f.get("product") or "").lower()
+            if not (plat.startswith(self.SWITCH_PREFIXES) or "switch" in prod):
+                continue
+            ver = re.sub(r"[+].*$", "", (f.get("version") or "").lstrip("v"))
+            if not re.match(r"^\d+\.\d+", ver):
+                continue
+            d = f.get("release_date")
+            # keep the record with the most info per version
+            if ver not in best or (d and not best[ver].get("release_date")):
+                best[ver] = {"release_date": (d or "")[:10] or None}
+
+        for ver, meta in sorted(
+            best.items(), key=lambda kv: parse_version(kv[0]) or kv[0]
+        ):
             yield FirmwareRecord(
                 vendor=self.VENDOR,
                 nos=self.NOS,
                 version=ver,
-                release_notes_url=self.INDEX,
+                release_date=meta["release_date"],
+                release_notes_url=self.NOTES,
             )
 
 

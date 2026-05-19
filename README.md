@@ -116,13 +116,17 @@ python3 -m streamlit run app.py   # 6 tabs: Ask/Search/Filter/Compare/Browse/Fir
   with the record. (PDF-only datasheet results have no image — by design;
   PDFs are skipped.)
 - **Firmware version advisor** — `cli.py --firmware MODEL VERSION` or the
-  "Firmware advisor" UI tab. The version-compare engine handles MikroTik /
-  Cisco / Junos / EOS / ArubaOS-CX / Cumulus formats and reports
-  security/feature/bug deltas between your version and the latest.
-  Populate data with `python3 fetch_firmware.py <vendor>` (public NOSes:
-  MikroTik, Ubiquiti, NVIDIA/Cumulus, Netgear, TP-Link). Login-gated
-  vendors (Cisco/Juniper/Arista/Aruba) honestly return a portal link
-  instead of guessing.
+  Firmware advisor UI. Populate data with `python3 fetch_firmware.py
+  <mikrotik|ubiquiti|cumulus>`. Honest coverage (no fabricated notes):
+  - **MikroTik** — full: 15 versions with parsed security/feature/bug
+    deltas (plain-text changelog feed).
+  - **Ubiquiti** — 61 versions via the public firmware JSON API:
+    version-delta + release dates + official notes link (no per-release
+    changelog text exists in the source).
+  - **NVIDIA Cumulus** — latest version pointer + official "What's New"
+    link (docs are JS-nav; only the current version is discoverable).
+  - **Login-gated** (Cisco/Juniper/Arista/Aruba) — honest portal link,
+    never a guess.
 
 ## Growing the DB
 
