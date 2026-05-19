@@ -1,0 +1,17 @@
+# Core: agent + CLI need nothing beyond the stdlib.
+
+# Web UI:
+streamlit>=1.30
+
+# Scrapers (all free, no APIs):
+requests>=2.31
+beautifulsoup4>=4.12
+lxml>=4.9                # faster HTML parsing
+pymupdf>=1.23            # fast PDF text extraction
+pdfplumber>=0.10         # PDF tables
+
+# Tests (optional — smoke_test.py needs nothing beyond stdlib):
+pytest>=7.0
+
+# Deliberately NOT used (kept $0 / no-LLM by design):
+# anthropic / groq / google-generativeai
