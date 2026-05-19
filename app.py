@@ -1,6 +1,10 @@
 """
 Streamlit web UI for the switch spec agent.
 
+Two focused tools only:
+  • Search specifications  (model lookup / comparison, live-fetch fallback)
+  • Firmware advisor
+
 Run:
     streamlit run app.py
 """
@@ -14,61 +18,135 @@ st.set_page_config(
     page_title="Switch Spec Agent",
     page_icon="🔌",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
     menu_items={
-        "About": "Network Switch Spec Agent — specs, comparisons and "
-        "firmware guidance across 10 supported vendors.",
+        "About": "Network Switch Spec Agent — switch specifications and "
+        "firmware guidance.",
     },
 )
 
 
 def _inject_css():
-    """Lightweight CSS for a cleaner, enterprise-grade presentation."""
     st.markdown(
         """
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-        html, body, [class*="css"] { font-family: 'Inter', system-ui, sans-serif; }
-
-        .block-container { padding-top: 2.2rem; padding-bottom: 3.5rem; max-width: 1180px; }
-
-        h1, h2, h3 { font-weight: 650; letter-spacing: -0.01em; color: #1B2330; }
-
-        /* Branded header */
-        .app-header { border-bottom: 1px solid #E3E8F0; padding-bottom: 1rem; margin-bottom: 1.6rem; }
-        .app-header .title { font-size: 1.7rem; font-weight: 700; color: #1B2330; margin: 0; }
-        .app-header .title span { color: #2F6FED; }
-        .app-header .subtitle { font-size: 0.95rem; color: #5B6573; margin: 0.25rem 0 0; }
-
-        /* Section heading */
-        .section-title { font-size: 1.15rem; font-weight: 650; color: #1B2330; margin: 0 0 0.15rem; }
-        .section-desc { font-size: 0.9rem; color: #5B6573; margin: 0 0 1.1rem; }
-
-        /* Metric cards */
-        [data-testid="stMetric"] {
-            background: #F8FAFC; border: 1px solid #E3E8F0;
-            border-radius: 10px; padding: 14px 16px;
+        html, body, [class*="css"], .stApp {
+            font-family: 'Inter', system-ui, sans-serif;
         }
-        [data-testid="stMetricLabel"] { color: #5B6573; font-weight: 500; }
+        .stApp {
+            background:
+              radial-gradient(1200px 600px at 50% -10%, #E8EEFF 0%, rgba(232,238,255,0) 60%),
+              linear-gradient(180deg, #F6F8FD 0%, #FFFFFF 40%);
+        }
+        section[data-testid="stSidebar"],
+        [data-testid="collapsedControl"] { display: none; }
 
-        /* Containers / dataframes */
-        [data-testid="stTable"], [data-testid="stDataFrame"] { border-radius: 8px; }
+        .block-container {
+            padding-top: 2.4rem; padding-bottom: 4rem; max-width: 1000px;
+        }
+        h1, h2, h3 { letter-spacing: -0.02em; color: #0F1B33; }
 
-        /* Sidebar */
-        section[data-testid="stSidebar"] { border-right: 1px solid #E3E8F0; }
-        .sidebar-brand { font-size: 1.15rem; font-weight: 700; color: #1B2330; }
-        .sidebar-brand span { color: #2F6FED; }
-        .sidebar-sub { font-size: 0.82rem; color: #5B6573; margin-top: 0.1rem; }
+        /* ---------- Hero ---------- */
+        .hero {
+            background: linear-gradient(135deg, #2F6FED 0%, #1E40AF 100%);
+            border-radius: 22px; padding: 2.3rem 2.4rem;
+            color: #fff; box-shadow: 0 18px 40px -18px rgba(31,64,175,.55);
+            margin-bottom: 1.6rem;
+        }
+        .hero h1 {
+            color: #fff; font-size: 2.05rem; font-weight: 800;
+            margin: 0 0 .35rem;
+        }
+        .hero p { color: #DCE6FF; font-size: 1rem; margin: 0; max-width: 640px; }
+        .hero .pill {
+            display: inline-block; background: rgba(255,255,255,.16);
+            color: #fff; font-size: .74rem; font-weight: 600;
+            letter-spacing: .04em; text-transform: uppercase;
+            padding: .28rem .7rem; border-radius: 999px; margin-bottom: .9rem;
+        }
 
-        /* Hide deploy button + default footer */
-        [data-testid="stDeployButton"] { display: none; }
-        footer { visibility: hidden; }
+        /* ---------- Segmented nav (radio) ---------- */
+        div[role="radiogroup"] {
+            display: flex; gap: .4rem; background: #EEF2FB;
+            padding: .35rem; border-radius: 14px; width: fit-content;
+            margin: 0 auto 1.8rem; border: 1px solid #E3E8F0;
+        }
+        div[role="radiogroup"] > label {
+            border-radius: 10px; padding: .55rem 1.25rem !important;
+            margin: 0 !important; cursor: pointer; font-weight: 600;
+            color: #5B6573; transition: all .15s ease;
+        }
+        div[role="radiogroup"] > label:has(input:checked) {
+            background: #fff; color: #1E40AF;
+            box-shadow: 0 4px 12px -4px rgba(31,64,175,.35);
+        }
+        div[role="radiogroup"] > label > div:first-child { display: none; }
 
-        /* App footer */
+        /* ---------- Cards ---------- */
+        div[data-testid="stVerticalBlockBorderWrapper"] {
+            background: #fff; border: 1px solid #E6EAF2 !important;
+            border-radius: 18px !important; padding: 1.6rem 1.7rem !important;
+            box-shadow: 0 14px 34px -22px rgba(15,27,51,.25);
+        }
+        .stImage img { border-radius: 14px; background: #F7F9FC;
+            border: 1px solid #EDF1F7; padding: 8px; }
+
+        /* ---------- Metric tiles ---------- */
+        [data-testid="stMetric"] {
+            background: linear-gradient(180deg,#F8FAFF 0%,#F2F5FC 100%);
+            border: 1px solid #E6EAF2; border-radius: 14px;
+            padding: 14px 16px;
+        }
+        [data-testid="stMetricLabel"] {
+            color: #6B7488; font-weight: 600;
+            text-transform: uppercase; font-size: .7rem; letter-spacing: .04em;
+        }
+        [data-testid="stMetricValue"] { color: #0F1B33; font-weight: 700; }
+
+        /* ---------- Misc ---------- */
+        .section-title {
+            font-size: 1.05rem; font-weight: 700; color: #0F1B33;
+            margin: .2rem 0 .15rem;
+        }
+        .section-desc { font-size: .9rem; color: #6B7488; margin: 0 0 1rem; }
+        .chip {
+            display:inline-block; background:#EEF2FB; color:#33415C;
+            border:1px solid #E0E6F2; border-radius:999px;
+            padding:.28rem .7rem; font-size:.8rem; margin:.15rem .3rem .15rem 0;
+        }
+        .vendor-badge {
+            display:inline-block; background:#2F6FED; color:#fff;
+            border-radius:8px; padding:.2rem .6rem; font-size:.8rem;
+            font-weight:600; letter-spacing:.02em;
+        }
+        .ds-link a {
+            display:inline-block; margin-top:.6rem; background:#2F6FED;
+            color:#fff !important; text-decoration:none; font-weight:600;
+            padding:.5rem 1rem; border-radius:10px; font-size:.88rem;
+        }
+        .stButton > button {
+            border-radius: 999px; border: 1px solid #D6DEEC;
+            background: #fff; color: #33415C; font-weight: 600;
+            font-size: .82rem; padding: .35rem .9rem;
+        }
+        .stButton > button:hover {
+            border-color: #2F6FED; color: #2F6FED;
+        }
+        [data-testid="stTextInput"] input {
+            height: 3.2rem; font-size: 1.05rem; border-radius: 14px;
+            border: 1px solid #D9E0EC; padding-left: 1rem;
+            background: #fff;
+        }
+        [data-testid="stTextInput"] input:focus {
+            border-color: #2F6FED;
+            box-shadow: 0 0 0 4px rgba(47,111,237,.15);
+        }
+        [data-testid="stDeployButton"], footer, #MainMenu { display: none; }
         .app-footer {
-            margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #E3E8F0;
-            font-size: 0.8rem; color: #8A93A2; text-align: center;
+            margin-top: 2.6rem; text-align: center;
+            font-size: .78rem; color: #9AA3B2;
         }
         </style>
         """,
@@ -84,351 +162,200 @@ def get_agent():
 agent = get_agent()
 _inject_css()
 
-# ---------- Sidebar navigation ----------
-with st.sidebar:
-    st.markdown(
-        '<div class="sidebar-brand">🔌 Switch <span>Spec Agent</span></div>'
-        '<div class="sidebar-sub">Specs · comparisons · firmware</div>',
-        unsafe_allow_html=True,
-    )
-    st.divider()
-    mode = st.radio(
-        "Workspace",
-        ["Ask", "Search", "Filter", "Compare", "Browse by vendor",
-         "Firmware advisor"],
-        label_visibility="collapsed",
-    )
-    st.divider()
-    st.caption(
-        "Coverage: 10 vendors. Specs are sourced from public datasheets; "
-        "firmware data is shown where publicly available."
-    )
+if "q" not in st.session_state:
+    st.session_state.q = ""
 
-# ---------- Header ----------
+
+def _set_q(value: str):
+    st.session_state.q = value
+
+
+# ---------- Hero ----------
 st.markdown(
-    '<div class="app-header">'
-    '<p class="title">Network <span>Switch Spec Agent</span></p>'
-    '<p class="subtitle">Look up, compare and assess network switches '
-    'across the 10 supported vendors.</p>'
+    '<div class="hero">'
+    '<span class="pill">Network Engineering</span>'
+    '<h1>Switch Spec Agent</h1>'
+    '<p>Instant specifications and firmware guidance for enterprise '
+    'network switches — search any model or compare two side by side.</p>'
     '</div>',
     unsafe_allow_html=True,
 )
 
+# ---------- Segmented nav ----------
+mode = st.radio(
+    "Tool",
+    ["🔍  Search specifications", "🛠  Firmware advisor"],
+    label_visibility="collapsed",
+    horizontal=True,
+)
 
-def _section(title: str, desc: str = ""):
-    """Consistent per-mode heading."""
-    html = f'<p class="section-title">{title}</p>'
-    if desc:
-        html += f'<p class="section-desc">{desc}</p>'
+
+def _chips(features, limit=24):
+    if not features:
+        return
+    html = "".join(
+        f'<span class="chip">{f}</span>' for f in features[:limit]
+    )
     st.markdown(html, unsafe_allow_html=True)
 
 
-def _show_switch_image(rec):
-    """Render the product image if we have one (broken links are silently
-    skipped)."""
-    if rec.get("image_url"):
-        try:
-            st.image(rec["image_url"], width="stretch")
-            return True
-        except Exception:
-            pass
-    return False
+def _render_spec_detail(top: dict):
+    with st.container(border=True):
+        has_img = bool(top.get("image_url"))
+        if has_img:
+            icol, hcol = st.columns([1, 2.4])
+            with icol:
+                try:
+                    st.image(top["image_url"], width="stretch")
+                except Exception:
+                    pass
+            head = hcol
+        else:
+            head = st
 
-# ---------- Ask (natural language router) ----------
-if mode == "Ask":
-    _section(
-        "Ask anything",
-        "Natural-language lookups, comparisons and filters in one box.",
-    )
-    q = st.text_input(
-        "Ask anything",
+        head.markdown(
+            f'<span class="vendor-badge">{top.get("vendor","")}</span>',
+            unsafe_allow_html=True,
+        )
+        head.markdown(f"### {top.get('model','')}")
+        if top.get("use_case"):
+            head.caption(f"Typical use · {top['use_case']}")
+
+        st.write("")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Ports", top.get("port_count") or "—")
+        c2.metric("Max speed",
+                  f"{top.get('port_speed_max_gbps')} G"
+                  if top.get("port_speed_max_gbps") else "—")
+        sc = top.get("switching_capacity_gbps")
+        c3.metric("Capacity", f"{sc:g} G" if sc else "—")
+        c4.metric("PoE", top.get("poe_standard") or "None")
+
+        c5, c6, c7, c8 = st.columns(4)
+        c5.metric("Layer", top.get("layer") or "—")
+        c6.metric("Rack U", top.get("rack_units") or "—")
+        fr = top.get("forwarding_rate_mpps")
+        c7.metric("Fwd rate", f"{fr:g} M" if fr else "—")
+        c8.metric("Network OS", top.get("nos") or "—")
+
+        if top.get("port_config"):
+            st.write(f"**Port configuration** · {top['port_config']}")
+        if top.get("uplink_config"):
+            st.write(f"**Uplinks** · {top['uplink_config']}")
+        if top.get("features"):
+            st.markdown('<div class="section-title">Features</div>',
+                        unsafe_allow_html=True)
+            _chips(top["features"])
+        if top.get("datasheet_url"):
+            st.markdown(
+                f'<div class="ds-link"><a href="{top["datasheet_url"]}" '
+                f'target="_blank">View datasheet ↗</a></div>',
+                unsafe_allow_html=True,
+            )
+        with st.expander("Full specification"):
+            rows = [
+                {"Spec": lbl,
+                 "Value": (", ".join(top[k]) if isinstance(top.get(k), list)
+                           else top.get(k))}
+                for k, lbl in LABELS.items()
+                if k != "image_url" and top.get(k) not in (None, "")
+            ]
+            st.table(rows)
+
+
+# ============================================================
+#  SEARCH SPECIFICATIONS
+# ============================================================
+if mode.endswith("Search specifications"):
+    st.markdown('<div class="section-title">Search specifications</div>'
+                '<div class="section-desc">Type a switch model, or '
+                '“compare A vs B”. Not in our records? We fetch it live.</div>',
+                unsafe_allow_html=True)
+
+    st.text_input(
+        "Search",
+        key="q",
         label_visibility="collapsed",
-        placeholder="'Cisco C9300-48P' · 'compare C9300-48P vs EX4400-48P' · "
-        "'which switches support 400G' · 'switches with PoE over 600W'",
+        placeholder="e.g.  Cisco Catalyst 9300-48P   ·   "
+        "compare C9300-48P vs EX4400-48P",
     )
-    if q:
+    q = st.session_state.q.strip()
+
+    if not q:
+        st.write("")
+        st.caption("Try one of these:")
+        ex = ["Cisco Catalyst 9300-48P", "Juniper EX4400-48P",
+              "Arista 7060CX-32S", "compare C9300-48P vs EX4400-48P"]
+        cols = st.columns(len(ex))
+        for col, e in zip(cols, ex):
+            col.button(e, on_click=_set_q, args=(e,),
+                       use_container_width=True)
+    else:
         t0 = time.time()
         resp = agent.answer(q)
         elapsed_ms = (time.time() - t0) * 1000
-        st.caption(f"Answered in {elapsed_ms:.0f} ms")
 
         if resp["type"] == "spec":
             st.success(resp["message"])
-            top = resp["result"]
-            with st.container(border=True):
-                if top.get("image_url"):
-                    icol, hcol = st.columns([1, 3])
-                    with icol:
-                        _show_switch_image(top)
-                    with hcol:
-                        st.subheader(f"{top['vendor']} {top['model']}")
-                else:
-                    st.subheader(f"{top['vendor']} {top['model']}")
-                rows = [
-                    {"Spec": lbl,
-                     "Value": (", ".join(top[k]) if isinstance(top.get(k), list)
-                               else top.get(k))}
-                    for k, lbl in LABELS.items()
-                    if k != "image_url" and top.get(k) not in (None, "")
-                ]
-                st.table(rows)
-                if top.get("datasheet_url"):
-                    st.markdown(f"[Datasheet]({top['datasheet_url']})")
+            _render_spec_detail(resp["result"])
             if resp.get("alternates"):
-                with st.expander("Other candidates"):
+                with st.expander(
+                        f"Other matches ({len(resp['alternates'])})"):
                     for a in resp["alternates"]:
                         st.write(f"- **{a['vendor']}** {a['model']}")
+            st.caption(f"Answered in {elapsed_ms:.0f} ms")
+
         elif resp["type"] == "compare":
             st.success(resp["message"])
             recs = resp["results"]
-            fields = [k for k in LABELS if k != "datasheet_url"]
-            table = []
-            for k in fields:
-                row = {"": LABELS[k]}
-                for r in recs:
-                    v = r.get(k)
-                    row[f"{r['vendor']} {r['model']}"] = (
-                        ", ".join(v) if isinstance(v, list)
-                        else (v if v not in (None, "") else "—")
-                    )
-                table.append(row)
-            st.dataframe(table, width="stretch", hide_index=True)
-        elif resp["type"] == "filter":
-            st.success(f"{resp['message']} — {len(resp['results'])} match")
-            st.dataframe(
-                [
-                    {
-                        "Vendor": r["vendor"], "Model": r["model"],
-                        "Port config": r.get("port_config"),
-                        "Capacity Gbps": r.get("switching_capacity_gbps"),
-                        "PoE (W)": r.get("poe_budget_w"),
-                        "NOS": r.get("nos"), "Use case": r.get("use_case"),
-                    }
-                    for r in resp["results"]
-                ],
-                width="stretch", hide_index=True,
-            )
-        elif resp["type"] == "vendors":
-            st.success(resp["message"])
-            st.dataframe(
-                [{"Vendor": v, "Models": c} for v, c in resp["vendors"]],
-                width="stretch", hide_index=True,
-            )
-        else:  # notfound / empty
-            st.warning(resp["message"])
-            if resp.get("suggestions"):
-                st.write("**Known models include:**")
-                st.write(resp["suggestions"])
-
-# ---------- Search ----------
-if mode == "Search":
-    _section(
-        "Search the catalog",
-        "Find a switch by model, family or vendor name.",
-    )
-    q = st.text_input(
-        "Query",
-        label_visibility="collapsed",
-        placeholder="e.g. 'Cisco Catalyst 9300-48P' or 'arista 7050' or 'C9300-48P'",
-    )
-    if q:
-        t0 = time.time()
-        results = agent.lookup(q, limit=10)
-        elapsed_ms = (time.time() - t0) * 1000
-
-        if not results:
-            st.warning("No matches.")
-        else:
-            st.caption(f"Found {len(results)} result(s) in {elapsed_ms:.0f} ms")
-            top = results[0]
+            fields = [k for k in LABELS
+                      if k not in ("datasheet_url", "image_url")]
             with st.container(border=True):
-                if top.get("image_url"):
-                    icol, hcol = st.columns([1, 3])
-                    with icol:
-                        _show_switch_image(top)
-                    with hcol:
-                        st.subheader(f"{top['vendor']} {top['model']}")
-                else:
-                    st.subheader(f"{top['vendor']} {top['model']}")
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    st.metric("Ports", top.get("port_count") or "—")
-                    st.metric("Max speed", f"{top.get('port_speed_max_gbps', '—')} Gbps")
-                    st.metric("Layer", top.get("layer") or "—")
-                with c2:
-                    sc = top.get("switching_capacity_gbps")
-                    st.metric(
-                        "Switching capacity",
-                        f"{sc:g} Gbps" if sc else "—",
-                    )
-                    fr = top.get("forwarding_rate_mpps")
-                    st.metric("Forwarding rate", f"{fr:g} Mpps" if fr else "—")
-                    st.metric("PoE", top.get("poe_standard") or "None")
-                with c3:
-                    st.metric("Rack units", top.get("rack_units") or "—")
-                    st.metric("NOS", top.get("nos") or "—")
-                    st.metric("Use case", top.get("use_case") or "—")
+                cols = st.columns(len(recs))
+                for col, r in zip(cols, recs):
+                    col.markdown(
+                        f'<span class="vendor-badge">{r.get("vendor","")}'
+                        f'</span>', unsafe_allow_html=True)
+                    col.markdown(f"#### {r.get('model','')}")
+                table = []
+                for k in fields:
+                    row = {"Spec": LABELS[k]}
+                    for r in recs:
+                        v = r.get(k)
+                        row[f"{r['vendor']} {r['model']}"] = (
+                            ", ".join(v) if isinstance(v, list)
+                            else (v if v not in (None, "") else "—"))
+                    table.append(row)
+                st.dataframe(table, width="stretch", hide_index=True)
+            st.caption(f"Answered in {elapsed_ms:.0f} ms")
 
-                st.write(f"**Port config:** {top.get('port_config', '—')}")
-                if top.get("uplink_config"):
-                    st.write(f"**Uplinks:** {top['uplink_config']}")
-                features = top.get("features") or []
-                if features:
-                    st.write("**Features:** " + ", ".join(features))
-                if top.get("datasheet_url"):
-                    st.markdown(f"[Datasheet]({top['datasheet_url']})")
-
-            if len(results) > 1:
-                with st.expander(f"Other candidates ({len(results) - 1})"):
-                    for r in results[1:]:
-                        st.write(f"- **{r['vendor']}** {r['model']} — {r.get('port_config', '')}")
-
-# ---------- Filter ----------
-elif mode == "Filter":
-    _section(
-        "Filter by requirements",
-        "Narrow the catalog down to switches that meet your criteria.",
-    )
-    c1, c2, c3 = st.columns(3)
-    vendors = [v for v, _ in agent.list_vendors()]
-    with c1:
-        vendor = st.selectbox("Vendor", ["Any"] + vendors)
-        use_case = st.selectbox(
-            "Use case", ["Any", "access", "aggregation", "leaf", "spine", "core"]
-        )
-    with c2:
-        min_speed = st.select_slider(
-            "Min port speed (Gbps)", options=[1, 10, 25, 40, 100, 200, 400, 800], value=1
-        )
-        layer = st.selectbox("Layer", ["Any", "L2", "L2+", "L3"])
-    with c3:
-        min_ports = st.number_input("Min ports", min_value=0, value=0)
-        poe = st.checkbox("Requires PoE")
-
-    feature = st.text_input("Required feature (substring, e.g. 'EVPN-VXLAN')")
-
-    results = agent.filter(
-        vendor=None if vendor == "Any" else vendor,
-        min_port_speed=min_speed if min_speed > 1 else None,
-        min_ports=min_ports if min_ports > 0 else None,
-        poe=True if poe else None,
-        layer=None if layer == "Any" else layer,
-        use_case=None if use_case == "Any" else use_case,
-        feature=feature or None,
-    )
-    st.caption(f"{len(results)} matches")
-    if results:
-        table = [
-            {
-                "Vendor": r["vendor"],
-                "Model": r["model"],
-                "Ports": r.get("port_count"),
-                "Max Gbps": r.get("port_speed_max_gbps"),
-                "Capacity Gbps": r.get("switching_capacity_gbps"),
-                "PoE": r.get("poe_standard") or "—",
-                "Layer": r.get("layer") or "—",
-                "NOS": r.get("nos") or "—",
-            }
-            for r in results
-        ]
-        st.dataframe(table, width="stretch", hide_index=True)
-
-# ---------- Compare ----------
-elif mode == "Compare":
-    _section(
-        "Compare two switches",
-        "Side-by-side spec comparison.",
-    )
-    c1, c2 = st.columns(2)
-    with c1:
-        q1 = st.text_input("Switch A", placeholder="e.g. C9300-48P")
-    with c2:
-        q2 = st.text_input("Switch B", placeholder="e.g. EX4400-48P")
-
-    if q1 and q2:
-        result = agent.compare(q1, q2)
-        a, b = result["a"], result["b"]
-
-        if not a or not b:
-            if not a:
-                st.warning(f"No match for: {q1}")
-            if not b:
-                st.warning(f"No match for: {q2}")
         else:
-            fields = [
-                ("Vendor", "vendor"),
-                ("Family", "family"),
-                ("Model", "model"),
-                ("Ports", "port_count"),
-                ("Port config", "port_config"),
-                ("Max speed (Gbps)", "port_speed_max_gbps"),
-                ("Switching capacity (Gbps)", "switching_capacity_gbps"),
-                ("Forwarding rate (Mpps)", "forwarding_rate_mpps"),
-                ("Buffer (MB)", "buffer_mb"),
-                ("Latency (ns)", "latency_ns"),
-                ("PoE", "poe_standard"),
-                ("PoE budget (W)", "poe_budget_w"),
-                ("Layer", "layer"),
-                ("Rack units", "rack_units"),
-                ("NOS", "nos"),
-                ("Use case", "use_case"),
-            ]
-            table = []
-            for label, key in fields:
-                row = {
-                    "": label,
-                    f"{a['vendor']} {a['model']}": a.get(key) or "—",
-                    f"{b['vendor']} {b['model']}": b.get(key) or "—",
-                }
-                table.append(row)
-            st.dataframe(table, width="stretch", hide_index=True)
+            # Filter / vendor / not-found: never expose the catalog.
+            st.info(
+                "Enter a specific switch model (e.g. *Cisco Catalyst "
+                "9300-48P*) or compare two models with "
+                "*compare A vs B*."
+            )
 
-            c1, c2 = st.columns(2)
-            with c1:
-                st.write("**Features**")
-                st.write(", ".join(a.get("features") or []) or "—")
-            with c2:
-                st.write("**Features**")
-                st.write(", ".join(b.get("features") or []) or "—")
+# ============================================================
+#  FIRMWARE ADVISOR
+# ============================================================
+else:
+    st.markdown('<div class="section-title">Firmware advisor</div>'
+                '<div class="section-desc">See what changed since your '
+                'current firmware — security fixes, features and '
+                'deprecations.</div>',
+                unsafe_allow_html=True)
 
-# ---------- Browse ----------
-elif mode == "Browse by vendor":
-    _section(
-        "Browse by vendor",
-        "All catalogued models for the selected vendor.",
-    )
-    vendors = [v for v, _ in agent.list_vendors()]
-    vendor = st.selectbox("Vendor", vendors)
-    models = agent.list_models(vendor)
-    st.caption(f"{len(models)} models")
-    table = [
-        {
-            "Family": m.get("family") or "—",
-            "Model": m["model"],
-            "Ports": m.get("port_count"),
-            "Port config": m.get("port_config"),
-            "Capacity Gbps": m.get("switching_capacity_gbps"),
-            "PoE": m.get("poe_standard") or "—",
-            "Use case": m.get("use_case") or "—",
-        }
-        for m in models
-    ]
-    st.dataframe(table, width="stretch", hide_index=True)
-
-# ---------- Firmware advisor ----------
-elif mode == "Firmware advisor":
-    _section(
-        "Firmware advisor",
-        "Enter your switch model and current firmware version to see what "
-        "changed in newer releases (where the data is publicly available).",
-    )
-    c1, c2 = st.columns([2, 1])
-    with c1:
-        fw_model = st.text_input(
-            "Switch model", placeholder="e.g. MikroTik CRS326-24G-2S+RM")
-    with c2:
-        fw_version = st.text_input(
-            "Current firmware version", placeholder="e.g. 7.10.2")
+    with st.container(border=True):
+        c1, c2 = st.columns([2, 1])
+        with c1:
+            fw_model = st.text_input(
+                "Switch model",
+                placeholder="e.g. MikroTik CRS326-24G-2S+RM")
+        with c2:
+            fw_version = st.text_input(
+                "Current firmware version", placeholder="e.g. 7.10.2")
 
     if fw_model and fw_version:
         advice = agent.firmware_advise(fw_model, fw_version)
@@ -436,46 +363,62 @@ elif mode == "Firmware advisor":
         if not advice.has_data:
             st.info(advice.message)
             if advice.portal_url:
-                st.markdown(f"[Vendor portal]({advice.portal_url})")
+                st.markdown(
+                    f'<div class="ds-link"><a href="{advice.portal_url}" '
+                    f'target="_blank">Vendor portal ↗</a></div>',
+                    unsafe_allow_html=True)
         elif not advice.diff:
             st.success(advice.message)
         else:
             d = advice.diff
             cur, tgt = d.current, d.target
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.metric("Your version", cur.version)
-                if cur.release_date:
-                    st.caption(f"Released {cur.release_date}")
-            with c2:
-                st.metric("Latest", tgt.version)
-                if tgt.release_date:
-                    st.caption(f"Released {tgt.release_date}")
-            with c3:
-                st.metric("Releases behind", d.releases_behind)
+            with st.container(border=True):
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    st.metric("Your version", cur.version)
+                    if cur.release_date:
+                        st.caption(f"Released {cur.release_date}")
+                with c2:
+                    st.metric("Latest", tgt.version)
+                    if tgt.release_date:
+                        st.caption(f"Released {tgt.release_date}")
+                with c3:
+                    st.metric("Releases behind", d.releases_behind)
 
-            if d.security_fixes:
-                st.subheader(f"Security fixes ({len(d.security_fixes)})")
-                for fix in d.security_fixes[:20]:
-                    st.write(f"- {fix}")
-            if d.new_features:
-                st.subheader(f"New features ({len(d.new_features)})")
-                for feat in d.new_features[:20]:
-                    st.write(f"- {feat}")
-            if d.bug_fixes:
-                with st.expander(f"Bug fixes ({len(d.bug_fixes)})"):
-                    for fix in d.bug_fixes[:50]:
+                if d.security_fixes:
+                    st.markdown(
+                        '<div class="section-title">🔒 Security fixes '
+                        f'({len(d.security_fixes)})</div>',
+                        unsafe_allow_html=True)
+                    for fix in d.security_fixes[:20]:
                         st.write(f"- {fix}")
-            if d.deprecations:
-                st.subheader("Removed / deprecated")
-                for dep in d.deprecations:
-                    st.write(f"- {dep}")
-            if tgt.release_notes_url:
-                st.markdown(f"[Full release notes]({tgt.release_notes_url})")
+                if d.new_features:
+                    st.markdown(
+                        '<div class="section-title">✨ New features '
+                        f'({len(d.new_features)})</div>',
+                        unsafe_allow_html=True)
+                    for feat in d.new_features[:20]:
+                        st.write(f"- {feat}")
+                if d.bug_fixes:
+                    with st.expander(f"Bug fixes ({len(d.bug_fixes)})"):
+                        for fix in d.bug_fixes[:50]:
+                            st.write(f"- {fix}")
+                if d.deprecations:
+                    st.markdown(
+                        '<div class="section-title">⚠️ Removed / '
+                        'deprecated</div>', unsafe_allow_html=True)
+                    for dep in d.deprecations:
+                        st.write(f"- {dep}")
+                if tgt.release_notes_url:
+                    st.markdown(
+                        f'<div class="ds-link"><a '
+                        f'href="{tgt.release_notes_url}" target="_blank">'
+                        f'Full release notes ↗</a></div>',
+                        unsafe_allow_html=True)
 
 # ---------- Footer ----------
 st.markdown(
     '<div class="app-footer">Network Switch Spec Agent · '
-    'Specs from public datasheets · For planning reference only</div>',
+    'For planning reference only</div>',
     unsafe_allow_html=True,
 )
