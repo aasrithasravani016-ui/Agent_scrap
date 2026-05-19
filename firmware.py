@@ -381,9 +381,15 @@ def advise(
             portal_url=LOGIN_GATED_VENDORS[vendor],
         )
 
-    # Decide which NOS to query
-    if not nos:
-        nos = PUBLIC_FIRMWARE_VENDORS.get(vendor)
+    # Decide which NOS to query. For vendors we publish firmware for, the
+    # canonical NOS (e.g. MikroTik -> "RouterOS") is authoritative — the
+    # switch row's free-text nos ("RouterOS / SwitchOS") won't match the
+    # firmware registry, so prefer the canonical name when we have one.
+    canonical = PUBLIC_FIRMWARE_VENDORS.get(vendor)
+    if canonical:
+        nos = canonical
+    elif not nos:
+        nos = canonical
     if not nos:
         return FirmwareAdvice(
             vendor=vendor, nos=None,

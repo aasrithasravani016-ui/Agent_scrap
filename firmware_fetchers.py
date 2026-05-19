@@ -71,82 +71,112 @@ class BaseFirmwareFetcher:
 # ---------------------------------------------------------------------------
 class MikroTikFirmwareFetcher(BaseFirmwareFetcher):
     """
-    Pulls RouterOS changelog from mikrotik.com.
-    Plain-text changelog format makes parsing reliable.
+    Pulls RouterOS changelogs from MikroTik's plain-text upgrade mirror.
+
+    Reliable endpoints (no JS, no API key):
+      - https://upgrade.mikrotik.com/routeros/NEWEST7.<channel>  -> "<ver> <ts>"
+      - https://upgrade.mikrotik.com/routeros/<ver>/CHANGELOG     -> plain text
+        ("What's new in <ver> (<date>):" + "*) area - text;" bullets)
+
+    We resolve the channel heads, then walk recent minor/patch versions of
+    the current major and fetch each per-version CHANGELOG.
     """
     VENDOR = "MikroTik"
     NOS = "RouterOS"
-    CHANGELOG_URLS = [
-        # MikroTik publishes the full changelog as a plain text endpoint per channel
-        "https://mikrotik.com/download/changelogs",   # HTML index
-    ]
+    BASE = "https://upgrade.mikrotik.com/routeros"
+    CHANNELS = {  # endpoint suffix -> train label
+        "NEWEST7.stable": "stable",
+        "NEWEST7.long-term": "long-term",
+        "NEWEST7.testing": "testing",
+    }
+    MINORS_BACK = 6   # how many minor versions back from the stable head
+    MAX_PATCH = 6     # patch numbers to probe per minor (.0 .. .5)
 
-    # Regex for the section header like "7.18.2 (2025-Mar-25 13:52):"
-    VERSION_HEADER = re.compile(
-        r"^([\d]+\.[\d]+(?:\.[\d]+)?(?:rc\d+)?)\s*\(([^)]+)\)\s*:?\s*$",
-        re.MULTILINE,
+    HEADER = re.compile(
+        r"What's new in\s+([0-9]+\.[0-9]+(?:\.[0-9]+)?(?:rc\d+)?)\s*"
+        r"\(([^)]+)\)\s*:?",
+        re.IGNORECASE,
     )
 
+    def _channel_version(self, suffix: str) -> Optional[str]:
+        txt = self.http.get_text(f"{self.BASE}/{suffix}")
+        if not txt:
+            return None
+        tok = txt.strip().split()
+        v = tok[0] if tok else ""
+        return v if re.match(r"^\d+\.\d+", v) else None
+
     def fetch(self) -> Iterator[FirmwareRecord]:
-        # Try the structured changelog endpoint first
-        text = self._fetch_changelog_text()
-        if not text:
+        # 1. Resolve channel heads. CHANNELS is ordered stable-first;
+        #    setdefault keeps the stable label if testing == stable, and we
+        #    capture the stable head directly (don't reverse-look it up).
+        train_of: dict[str, str] = {}
+        recommended: set[str] = set()
+        stable_head: Optional[str] = None
+        for suffix, train in self.CHANNELS.items():
+            v = self._channel_version(suffix)
+            if not v or not re.match(r"^[1-9]", v):   # skip "0.00" placeholder
+                continue
+            train_of.setdefault(v, train)
+            if train == "stable":
+                stable_head = v
+                recommended.add(v)
+
+        if not stable_head:
+            logger.warning("[MikroTik] could not resolve stable channel head")
             return
+        latest_minor = int(stable_head.split(".")[1])
 
-        # Split into version blocks
-        blocks = self._split_into_blocks(text)
-        for version, date_str, body in blocks:
-            rec = FirmwareRecord(
-                vendor=self.VENDOR,
-                nos=self.NOS,
-                version=version,
-                release_date=self._normalize_date(date_str),
-                release_notes_url="https://mikrotik.com/download/changelogs",
-            )
-            self._populate_changes(rec, body)
-            yield rec
+        # 2. Walk recent minor/patch versions and fetch each CHANGELOG
+        for minor in range(latest_minor, max(latest_minor - self.MINORS_BACK,
+                                              -1), -1):
+            for patch in range(0, self.MAX_PATCH):
+                ver = f"7.{minor}" if patch == 0 else f"7.{minor}.{patch}"
+                text = self.http.get_text(f"{self.BASE}/{ver}/CHANGELOG")
+                if not text or "what's new in" not in text.lower():
+                    if patch == 0:
+                        break  # this minor doesn't exist at all
+                    break      # patches are contiguous; stop at first gap
+                rec = self._parse(ver, text, train_of, recommended)
+                if rec:
+                    yield rec
 
-    def _fetch_changelog_text(self) -> Optional[str]:
-        """MikroTik exposes per-version text files; fetch the stable channel."""
-        # Stable channel current text endpoint:
-        url = "https://upgrade.mikrotik.com/routeros/NEWEST7.stable"
-        # That returns "<version> <hash>" - we need the actual changelog.
-        # Real changelog: https://upgrade.mikrotik.com/routeros/<version>/CHANGELOG
-        # Try fetching the index page which contains version links.
-        return self.http.get_text("https://mikrotik.com/download/changelogs")
-
-    def _split_into_blocks(self, text: str) -> list[tuple[str, str, str]]:
-        """Find all version headers and the body that follows each."""
-        blocks = []
-        matches = list(self.VERSION_HEADER.finditer(text))
-        for i, m in enumerate(matches):
-            version = m.group(1).strip()
-            date_str = m.group(2).strip()
-            start = m.end()
-            end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-            body = text[start:end]
-            blocks.append((version, date_str, body))
-        return blocks
+    def _parse(self, ver: str, text: str, train_of: dict,
+               recommended: set) -> Optional[FirmwareRecord]:
+        m = self.HEADER.search(text)
+        version = m.group(1).strip() if m else ver
+        date_str = m.group(2).strip() if m else ""
+        rec = FirmwareRecord(
+            vendor=self.VENDOR,
+            nos=self.NOS,
+            version=version,
+            release_date=self._normalize_date(date_str),
+            train=train_of.get(version),
+            is_recommended=version in recommended,
+            release_notes_url=f"{self.BASE}/{ver}/CHANGELOG",
+        )
+        body = text[m.end():] if m else text
+        self._populate_changes(rec, body)
+        return rec
 
     @staticmethod
     def _normalize_date(s: str) -> Optional[str]:
-        """MikroTik uses '2025-Mar-25 13:52' format."""
+        """MikroTik uses '2023-Nov-17 13:38' format."""
         for fmt in ("%Y-%b-%d %H:%M", "%Y-%b-%d", "%Y-%m-%d"):
             try:
-                return datetime.strptime(s, fmt).date().isoformat()
+                return datetime.strptime(s.strip(), fmt).date().isoformat()
             except ValueError:
                 continue
         return None
 
     @staticmethod
     def _populate_changes(rec: FirmwareRecord, body: str):
-        """Classify each bullet line into the right field."""
+        """Classify each '*) area - text;' bullet into the right field."""
         for raw_line in body.splitlines():
             line = raw_line.strip()
-            if not line or not line.startswith(("*", "-", "!")):
+            if not line.startswith("*)"):
                 continue
-            # Strip leading marker
-            text = line.lstrip("*-! ").strip()
+            text = line[2:].strip().rstrip(";").strip()
             if not text:
                 continue
             lower = text.lower()
@@ -160,9 +190,8 @@ class MikroTikFirmwareFetcher(BaseFirmwareFetcher):
                 "deprecated", "removed", "no longer"
             )):
                 rec.deprecations.append(text)
-            elif any(kw in lower for kw in (
-                "fixed", "resolved", "corrected", "improved"
-            )):
+            else:
+                # MikroTik bullets are overwhelmingly fixes/improvements
                 rec.bug_fixes.append(text)
 
 

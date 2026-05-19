@@ -10,7 +10,70 @@ import streamlit as st
 
 from agent import SpecAgent, LABELS
 
-st.set_page_config(page_title="Switch Spec Agent", page_icon="🔌", layout="wide")
+st.set_page_config(
+    page_title="Switch Spec Agent",
+    page_icon="🔌",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        "About": "Network Switch Spec Agent — specs, comparisons and "
+        "firmware guidance across 10 supported vendors.",
+    },
+)
+
+
+def _inject_css():
+    """Lightweight CSS for a cleaner, enterprise-grade presentation."""
+    st.markdown(
+        """
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        html, body, [class*="css"] { font-family: 'Inter', system-ui, sans-serif; }
+
+        .block-container { padding-top: 2.2rem; padding-bottom: 3.5rem; max-width: 1180px; }
+
+        h1, h2, h3 { font-weight: 650; letter-spacing: -0.01em; color: #1B2330; }
+
+        /* Branded header */
+        .app-header { border-bottom: 1px solid #E3E8F0; padding-bottom: 1rem; margin-bottom: 1.6rem; }
+        .app-header .title { font-size: 1.7rem; font-weight: 700; color: #1B2330; margin: 0; }
+        .app-header .title span { color: #2F6FED; }
+        .app-header .subtitle { font-size: 0.95rem; color: #5B6573; margin: 0.25rem 0 0; }
+
+        /* Section heading */
+        .section-title { font-size: 1.15rem; font-weight: 650; color: #1B2330; margin: 0 0 0.15rem; }
+        .section-desc { font-size: 0.9rem; color: #5B6573; margin: 0 0 1.1rem; }
+
+        /* Metric cards */
+        [data-testid="stMetric"] {
+            background: #F8FAFC; border: 1px solid #E3E8F0;
+            border-radius: 10px; padding: 14px 16px;
+        }
+        [data-testid="stMetricLabel"] { color: #5B6573; font-weight: 500; }
+
+        /* Containers / dataframes */
+        [data-testid="stTable"], [data-testid="stDataFrame"] { border-radius: 8px; }
+
+        /* Sidebar */
+        section[data-testid="stSidebar"] { border-right: 1px solid #E3E8F0; }
+        .sidebar-brand { font-size: 1.15rem; font-weight: 700; color: #1B2330; }
+        .sidebar-brand span { color: #2F6FED; }
+        .sidebar-sub { font-size: 0.82rem; color: #5B6573; margin-top: 0.1rem; }
+
+        /* Hide deploy button + default footer */
+        [data-testid="stDeployButton"] { display: none; }
+        footer { visibility: hidden; }
+
+        /* App footer */
+        .app-footer {
+            margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #E3E8F0;
+            font-size: 0.8rem; color: #8A93A2; text-align: center;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 @st.cache_resource
@@ -19,16 +82,45 @@ def get_agent():
 
 
 agent = get_agent()
+_inject_css()
 
-st.title("🔌 Network Switch Spec Agent")
-st.caption("Ask about any switch from the 10 supported vendors.")
+# ---------- Sidebar navigation ----------
+with st.sidebar:
+    st.markdown(
+        '<div class="sidebar-brand">🔌 Switch <span>Spec Agent</span></div>'
+        '<div class="sidebar-sub">Specs · comparisons · firmware</div>',
+        unsafe_allow_html=True,
+    )
+    st.divider()
+    mode = st.radio(
+        "Workspace",
+        ["Ask", "Search", "Filter", "Compare", "Browse by vendor",
+         "Firmware advisor"],
+        label_visibility="collapsed",
+    )
+    st.divider()
+    st.caption(
+        "Coverage: 10 vendors. Specs are sourced from public datasheets; "
+        "firmware data is shown where publicly available."
+    )
 
-mode = st.radio(
-    "Mode",
-    ["Ask", "Search", "Filter", "Compare", "Browse by vendor",
-     "Firmware advisor"],
-    horizontal=True,
+# ---------- Header ----------
+st.markdown(
+    '<div class="app-header">'
+    '<p class="title">Network <span>Switch Spec Agent</span></p>'
+    '<p class="subtitle">Look up, compare and assess network switches '
+    'across the 10 supported vendors.</p>'
+    '</div>',
+    unsafe_allow_html=True,
 )
+
+
+def _section(title: str, desc: str = ""):
+    """Consistent per-mode heading."""
+    html = f'<p class="section-title">{title}</p>'
+    if desc:
+        html += f'<p class="section-desc">{desc}</p>'
+    st.markdown(html, unsafe_allow_html=True)
 
 
 def _show_switch_image(rec):
@@ -44,8 +136,13 @@ def _show_switch_image(rec):
 
 # ---------- Ask (natural language router) ----------
 if mode == "Ask":
+    _section(
+        "Ask anything",
+        "Natural-language lookups, comparisons and filters in one box.",
+    )
     q = st.text_input(
         "Ask anything",
+        label_visibility="collapsed",
         placeholder="'Cisco C9300-48P' · 'compare C9300-48P vs EX4400-48P' · "
         "'which switches support 400G' · 'switches with PoE over 600W'",
     )
@@ -72,7 +169,7 @@ if mode == "Ask":
                      "Value": (", ".join(top[k]) if isinstance(top.get(k), list)
                                else top.get(k))}
                     for k, lbl in LABELS.items()
-                    if top.get(k) not in (None, "")
+                    if k != "image_url" and top.get(k) not in (None, "")
                 ]
                 st.table(rows)
                 if top.get("datasheet_url"):
@@ -125,8 +222,13 @@ if mode == "Ask":
 
 # ---------- Search ----------
 if mode == "Search":
+    _section(
+        "Search the catalog",
+        "Find a switch by model, family or vendor name.",
+    )
     q = st.text_input(
         "Query",
+        label_visibility="collapsed",
         placeholder="e.g. 'Cisco Catalyst 9300-48P' or 'arista 7050' or 'C9300-48P'",
     )
     if q:
@@ -183,6 +285,10 @@ if mode == "Search":
 
 # ---------- Filter ----------
 elif mode == "Filter":
+    _section(
+        "Filter by requirements",
+        "Narrow the catalog down to switches that meet your criteria.",
+    )
     c1, c2, c3 = st.columns(3)
     vendors = [v for v, _ in agent.list_vendors()]
     with c1:
@@ -229,6 +335,10 @@ elif mode == "Filter":
 
 # ---------- Compare ----------
 elif mode == "Compare":
+    _section(
+        "Compare two switches",
+        "Side-by-side spec comparison.",
+    )
     c1, c2 = st.columns(2)
     with c1:
         q1 = st.text_input("Switch A", placeholder="e.g. C9300-48P")
@@ -283,6 +393,10 @@ elif mode == "Compare":
 
 # ---------- Browse ----------
 elif mode == "Browse by vendor":
+    _section(
+        "Browse by vendor",
+        "All catalogued models for the selected vendor.",
+    )
     vendors = [v for v, _ in agent.list_vendors()]
     vendor = st.selectbox("Vendor", vendors)
     models = agent.list_models(vendor)
@@ -303,10 +417,10 @@ elif mode == "Browse by vendor":
 
 # ---------- Firmware advisor ----------
 elif mode == "Firmware advisor":
-    st.write(
-        "Enter your switch model and the firmware version you're currently "
-        "running. We'll show what changed in newer releases (where the data "
-        "is publicly available)."
+    _section(
+        "Firmware advisor",
+        "Enter your switch model and current firmware version to see what "
+        "changed in newer releases (where the data is publicly available).",
     )
     c1, c2 = st.columns([2, 1])
     with c1:
@@ -358,3 +472,10 @@ elif mode == "Firmware advisor":
                     st.write(f"- {dep}")
             if tgt.release_notes_url:
                 st.markdown(f"[Full release notes]({tgt.release_notes_url})")
+
+# ---------- Footer ----------
+st.markdown(
+    '<div class="app-footer">Network Switch Spec Agent · '
+    'Specs from public datasheets · For planning reference only</div>',
+    unsafe_allow_html=True,
+)
