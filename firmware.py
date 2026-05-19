@@ -324,12 +324,20 @@ def firmware_diff(
 # -----------------------------------------------------------------------------
 
 # Vendors whose firmware info is publicly accessible (can be ingested)
+# Only vendors we actually have a working public fetcher for. (Netgear /
+# TP-Link were listed here before but have no fetcher — that made advise()
+# tell users to run a fetcher that doesn't exist. Honest = list reality.)
 PUBLIC_FIRMWARE_VENDORS = {
     "MikroTik": "RouterOS",
     "Ubiquiti": "UniFi OS",
     "NVIDIA": "Cumulus Linux",
-    "Netgear": "Smart Managed",
-    "TP-Link": "Omada SDN",
+}
+
+# vendor -> fetch_firmware.py key (only where a fetcher actually exists)
+FETCHER_KEYS = {
+    "MikroTik": "mikrotik",
+    "Ubiquiti": "ubiquiti",
+    "NVIDIA": "cumulus",
 }
 
 # Vendors whose firmware info is behind partner logins (we cannot fetch)
@@ -403,15 +411,19 @@ def advise(
     if not diff:
         # See if we at least have some data for this NOS
         if not list_firmware(vendor, nos, db_path=db_path):
+            key = FETCHER_KEYS.get(vendor)
+            if key:
+                msg = (f"No firmware data cached for {vendor} {nos}. "
+                       f"Populate it: `python3 fetch_firmware.py {key}`.")
+            else:
+                msg = (f"No public firmware source available for {vendor} "
+                       f"{nos} at $0/no-LLM. Check the vendor's support "
+                       f"site for release notes.")
             return FirmwareAdvice(
                 vendor=vendor, nos=nos,
                 current_version=current_version,
                 has_data=False,
-                message=(
-                    f"No firmware data for {vendor} {nos}. Run the firmware "
-                    f"fetcher for this vendor: "
-                    f"`python fetch_firmware.py {vendor.lower()}`."
-                ),
+                message=msg,
             )
         return FirmwareAdvice(
             vendor=vendor, nos=nos,

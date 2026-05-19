@@ -1,0 +1,588 @@
+
+======================================================================
+  SWITCH SPEC AGENT - DIAGNOSTICS REPORT
+======================================================================
+  Started: 2026-05-20T00:34:46.445673
+
+======================================================================
+  STAGE 1 - Environment
+======================================================================
+  Python:    3.10.0
+  Platform:  macOS-26.4.1-arm64-arm-64bit
+  Directory: /Users/aasritha/agent/switch-spec-agent
+  Timestamp: 2026-05-20T00:34:46.455299
+  [PASS] Critical files present
+  [PASS] Has scrapers package
+  [PASS] Has firmware module
+  [PASS] Has firmware fetchers
+  [PASS] Has live fallback
+  [PASS] Has search module
+  [PASS] Has smoke test
+
+======================================================================
+  STAGE 2 - Smoke tests
+======================================================================
+  [PASS] Smoke tests  -- 0.2s,   19 passed, 0 failed, 19 total
+        
+        ============================================================
+          [PASS] parsers: parse_capacity_gbps converts Tbps
+          [PASS] parsers: parse_port_config sums multi-section configs
+          [PASS] parsers: parse_poe_standard recognizes 802.3bt as PoE++
+          [PASS] parsers: parse_buffer_mb handles GB and KB units
+          [PASS] parsers: detect_features finds common protocols
+          [PASS] parsers: map_kv_to_record_fields normalizes a Cisco-style table
+          [PASS] parsers: extract_spec_tables pulls KV from HTML
+          [PASS] agent: looks up by SKU
+          [PASS] agent: looks up by partial model name
+          [PASS] agent: features parsed to Python list
+          [PASS] agent: filter by vendor and PoE
+          [PASS] agent: format_spec returns readable text
+          [PASS] agent: format_spec handles missing record gracefully
+          [PASS] agent: raises clear error when DB missing
+          [PASS] live: source confidence ranks vendor PDFs highest
+          [PASS] live: merge picks high-confidence value on conflict
+          [PASS] live: agreement bonus boosts confidence
+          [PASS] scrapers: core vendor classes importable
+          [PASS] scrapers: every vendor scraper instantiates
+        ============================================================
+          19 passed, 0 failed, 19 total
+        
+
+======================================================================
+  STAGE 3 - Build database
+======================================================================
+  [SKIP] build_db.py SKIPPED to preserve the live 240-record image DB
+
+======================================================================
+  STAGE 4 - Database contents
+======================================================================
+  [PASS] Tables  -- ['switches', 'sqlite_sequence', 'firmware_versions']
+  Switches: 240 rows
+    Arista                    14
+    Cisco                     28
+    Dell                      5
+    Edge-Core                 1
+    Extreme                   1
+    Fortinet                  2
+    HPE Aruba                 5
+    Huawei                    1
+    Juniper                   7
+    MikroTik                  40
+    NVIDIA                    19
+    Netgear                   33
+    TP-Link                   76
+    Ubiquiti                  7
+    Zyxel                     1
+  Firmware: 77 versions
+    MikroTik        RouterOS                       15
+    NVIDIA          Cumulus Linux                  1
+    Ubiquiti        UniFi OS                       61
+
+======================================================================
+  STAGE 5 - Seeded lookups (offline, fast)
+======================================================================
+  [PASS] Seeded: Cisco Catalyst 9300-48P  -- 25ms
+  [PASS] Seeded: C9300-48P  -- 24ms
+  [PASS] Seeded: Arista 7050SX3-48YC8  -- 24ms
+  [PASS] Seeded: EX4400-48P  -- 25ms
+  [PASS] Seeded: USW-Pro-24-PoE  -- 25ms
+
+======================================================================
+  STAGE 6 - Live fallback (vendors WITH scrapers)
+======================================================================
+
+----------------------------------------------------------------------
+  Vendor: cisco
+----------------------------------------------------------------------
+  [FAIL] Cisco Catalyst 9300-48P  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] Cisco Nexus 9336C-FX2  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+
+----------------------------------------------------------------------
+  Vendor: arista
+----------------------------------------------------------------------
+  [FAIL] Arista 7050SX3-48YC8  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] Arista 7280CR3-32D4  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+
+----------------------------------------------------------------------
+  Vendor: juniper
+----------------------------------------------------------------------
+  [FAIL] Juniper EX4400-48P  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] Juniper QFX5120-48Y  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+
+----------------------------------------------------------------------
+  Vendor: aruba
+----------------------------------------------------------------------
+  [FAIL] Aruba 6300M-48G-PoE4+  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] Aruba 8325-48Y8C  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+
+----------------------------------------------------------------------
+  Vendor: dell
+----------------------------------------------------------------------
+  [FAIL] Dell S5248F-ON  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] Dell Z9332F-ON  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+
+----------------------------------------------------------------------
+  Vendor: nvidia
+----------------------------------------------------------------------
+  [FAIL] NVIDIA SN4700  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] NVIDIA SN5600  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+
+----------------------------------------------------------------------
+  Vendor: extreme
+----------------------------------------------------------------------
+  [FAIL] Extreme 5520-48W  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] Extreme 7520-48Y  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+
+----------------------------------------------------------------------
+  Vendor: huawei
+----------------------------------------------------------------------
+  [FAIL] Huawei CE6865-48S8CQ-EI  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] Huawei S6730-H48X6C  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+
+----------------------------------------------------------------------
+  Vendor: fortinet
+----------------------------------------------------------------------
+  [FAIL] FortiSwitch-448E-FPOE  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] FortiSwitch-1048E  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+
+----------------------------------------------------------------------
+  Vendor: ubiquiti
+----------------------------------------------------------------------
+  [FAIL] USW-Pro-24-PoE  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] USW-Enterprise-24-PoE  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+
+----------------------------------------------------------------------
+  Vendor: mikrotik
+----------------------------------------------------------------------
+  [FAIL] CRS326-24G-2S+RM  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] CRS354-48G-4S+2Q+RM  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+
+----------------------------------------------------------------------
+  Vendor: tplink
+----------------------------------------------------------------------
+  [FAIL] TL-SG3428  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] TL-SG3210XHP-M2  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+
+----------------------------------------------------------------------
+  Vendor: netgear
+----------------------------------------------------------------------
+  [FAIL] M4350-48G4XF  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] GS752TPP  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+
+----------------------------------------------------------------------
+  Vendor: h3c
+----------------------------------------------------------------------
+  [FAIL] H3C S6850-56HF  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] H3C S5560X-30C-EI  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+
+----------------------------------------------------------------------
+  Vendor: ruijie
+----------------------------------------------------------------------
+  [FAIL] Ruijie RG-S6520-48ST6X-HI  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] Ruijie RG-S6920-4C  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+
+----------------------------------------------------------------------
+  Vendor: edgecore
+----------------------------------------------------------------------
+  [FAIL] Edgecore AS7726-32X  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] Edgecore AS9716-32D  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+
+----------------------------------------------------------------------
+  Vendor: zyxel
+----------------------------------------------------------------------
+  [FAIL] Zyxel XGS4600-32F  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] Zyxel XS1930-12HP  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+
+----------------------------------------------------------------------
+  Vendor: lenovo
+----------------------------------------------------------------------
+  [FAIL] Lenovo NE10032  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] Lenovo NE2572  -- exit=2, 0.0s
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+
+======================================================================
+  STAGE 7 - Live fallback (vendors WITHOUT scrapers)
+======================================================================
+  [FAIL] D-Link DGS-1520-28MP  -- exit=2
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] Allied Telesis AT-x550-18XSPQm  -- exit=2
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] Moxa EDS-G508E  -- exit=2
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] Hirschmann RSP30  -- exit=2
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] FS.com S5860-48SC  -- exit=2
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+  [FAIL] Cambium cnMatrix EX2052-P  -- exit=2
+        usage: cli.py [-h] [--vendor VENDOR] [--list] [--vendors] [--compare A B]
+                      [--filter] [--min-speed MIN_SPEED] [--min-ports MIN_PORTS]
+                      [--min-poe-w MIN_POE_W] [--poe] [--layer LAYER]
+                      [--use-case USE_CASE] [--feature FEATURE] [--limit LIMIT]
+                      [--no-live] [--firmware MODEL VERSION]
+                      [query ...]
+        cli.py: error: unrecognized arguments: -v
+
+======================================================================
+  STAGE 8 - Login-gated firmware (honest portal message)
+======================================================================
+  [PASS] Cisco Catalyst 9300-48P v17.6.4  -- honest message
+  [PASS] Arista 7050SX3-48YC8 v4.28.6M  -- honest message
+  [PASS] Juniper EX4400-48P v21.4R3  -- honest message
+  [PASS] Aruba 6300M-48G-PoE4+ v10.10.1000  -- honest message
+
+======================================================================
+  STAGE 9 - Firmware fetchers
+======================================================================
+
+----------------------------------------------------------------------
+  Firmware: mikrotik
+----------------------------------------------------------------------
+  [PASS] fetch_firmware mikrotik  -- 7.2s
+
+----------------------------------------------------------------------
+  Firmware: ubiquiti
+----------------------------------------------------------------------
+  [PASS] fetch_firmware ubiquiti  -- 0.2s
+
+----------------------------------------------------------------------
+  Firmware: cumulus
+----------------------------------------------------------------------
+  [PASS] fetch_firmware cumulus  -- 0.1s
+
+----------------------------------------------------------------------
+  Firmware: tplink
+----------------------------------------------------------------------
+  [FAIL] fetch_firmware tplink  -- exit=1
+        00:34:55 ERROR fetch_firmware  Unknown vendors: ['tplink']
+        00:34:55 ERROR fetch_firmware  Available: ['mikrotik', 'cumulus', 'ubiquiti']
+
+----------------------------------------------------------------------
+  Firmware: netgear
+----------------------------------------------------------------------
+  [FAIL] fetch_firmware netgear  -- exit=1
+        00:34:55 ERROR fetch_firmware  Unknown vendors: ['netgear']
+        00:34:55 ERROR fetch_firmware  Available: ['mikrotik', 'cumulus', 'ubiquiti']
+
+======================================================================
+  STAGE 10 - Firmware advisor (public vendors with data)
+======================================================================
+  [PASS] MikroTik CRS326-24G-2S+RM v7.10.2  -- structured diff produced
+  [PASS] USW-Pro-24-PoE v6.5.59  -- structured diff produced
+  [PASS] NVIDIA SN4700 v5.4.0  -- structured diff produced
+  [WARN] TL-SG3428 v1.0.0  -- no data - run fetcher first
+  [WARN] M4350-48G4XF v13.0.5.20  -- unclear output
+        Extreme  firmware advice
+        ========================
+        
+          No NOS specified and no default known for Extreme.
+        
+        [3 ms]
+
+======================================================================
+  STAGE 11 - Scraper discovery (3 vendors, --limit 2)
+======================================================================
+
+----------------------------------------------------------------------
+  Scraper: ubiquiti
+----------------------------------------------------------------------
+  [PASS] run_scrapers ubiquiti  -- 0.2s
+
+----------------------------------------------------------------------
+  Scraper: mikrotik
+----------------------------------------------------------------------
+  [PASS] run_scrapers mikrotik  -- 0.5s
+
+----------------------------------------------------------------------
+  Scraper: h3c
+----------------------------------------------------------------------
+  [PASS] run_scrapers h3c  -- 23.6s
+
+======================================================================
+  SUMMARY
+======================================================================
+  Pass:    27
+  Fail:    44
+  Warn:    2
+  Skip:    1
+  Elapsed: 33.6s
