@@ -121,6 +121,10 @@ NOT_PRODUCT_KEYWORDS = (
     "placeholder", "avatar", "thumb_", "pixel", "tracker",
     "social", "share", "facebook", "twitter", "linkedin",
     "rss", "footer", "header", "nav", "menu",
+    "open-graph", "opengraph", "og-image", "og_image", "sprite",
+    "brand-logo", "brand_logo",
+    "opacity0", "spacer", "blank.", "transparent.", "1x1", "/empty",
+    "nolook", "noimage", "no-image", "lazy", "loading.gif",
 )
 
 
@@ -147,7 +151,7 @@ def find_product_image(html: str, base_url: str = "") -> Optional[str]:
             tag = s.select_one(selector)
             if tag and tag.get("content"):
                 url = _absolutize(tag["content"], base_url)
-                if url and _looks_like_image(url):
+                if url and _looks_like_image(url) and not _is_logo_like(url):
                     return url
 
     # 2. JSON-LD structured data
@@ -157,7 +161,9 @@ def find_product_image(html: str, base_url: str = "") -> Optional[str]:
             data = _json.loads(script.string or "{}")
             img = _extract_image_from_jsonld(data)
             if img:
-                return _absolutize(img, base_url)
+                abs_img = _absolutize(img, base_url)
+                if abs_img and not _is_logo_like(abs_img):
+                    return abs_img
         except (ValueError, TypeError):
             continue
 
@@ -173,7 +179,7 @@ def find_product_image(html: str, base_url: str = "") -> Optional[str]:
         if not src:
             continue
         url = _absolutize(src, base_url)
-        if not url or not _looks_like_image(url):
+        if not url or not _looks_like_image(url) or _is_logo_like(url):
             continue
         score = _score_image(url, img)
         if score > 0:
@@ -208,6 +214,19 @@ def _looks_like_image(url: str) -> bool:
     u = url.lower().split("?")[0].split("#")[0]
     return any(u.endswith(ext) for ext in
                (".jpg", ".jpeg", ".png", ".webp", ".svg", ".gif"))
+
+
+def _is_logo_like(url: str) -> bool:
+    """True if the URL is a brand logo / social-card / icon rather than an
+    actual product photo. Applied to og:image, JSON-LD and ranked <img>
+    results so vendors that set their logo as og:image don't win."""
+    u = url.lower()
+    if any(kw in u for kw in NOT_PRODUCT_KEYWORDS):
+        return True
+    # Product photos are raster; the only SVGs we see are logos.
+    if u.split("?")[0].split("#")[0].endswith(".svg"):
+        return True
+    return False
 
 
 def _score_image(url: str, img_tag) -> int:
