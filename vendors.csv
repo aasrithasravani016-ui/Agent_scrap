@@ -1,0 +1,135 @@
+Name,Aliases,Website,Country,Category,Notes
+Adtran,"adtran, advanced transmission networks",adtran.com,US,carrier,Acquired ADVA Optical Networking in 2022.
+ADVA Optical Networking,adva,adva.com,DE,carrier,Now part of Adtran.
+Advantech,"advantech, advantech co",advantech.com,TW,industrial,Acquired B&B Electronics.
+Aerohive Networks,"aerohive, aerohive switches, airpro",extremenetworks.com,US,enterprise,Acquired by Extreme Networks in 2019.
+Alaxala Networks,alaxala,alaxala.com,JP,enterprise,Hitachi/NEC joint venture.
+Alcatel-Lucent Enterprise,"alcatel, alcatel-lucent, ale",al-enterprise.com,FR,enterprise,
+Allied Telesis,"allied telesis, at",alliedtelesis.com,JP,enterprise,
+Alpha Networks,alpha networks,alphanetworks.com,TW,smb,
+AMG Systems,"amg systems, amg",amgsystems.com,UK,industrial,
+Antaira Technologies,antaira,antaira.com,US,industrial,
+Araknis,"araknis, snap one",snapav.com,US,smb,Snap One brand.
+Arista Networks,arista,arista.com,US,data_center,
+HPE Aruba Networking,"aruba, hpe aruba, hp aruba, hpe, hp",arubanetworking.hpe.com,US,enterprise,Rebranded from 'Aruba Networks' in 2023.
+Asterfusion,asterfusion,asterfusion.com,CN,data_center,
+AvaLan Wireless,avalan,avalan.com,US,industrial,
+Avaya,avaya,avaya.com,US,enterprise,Switching biz sold to Extreme Networks.
+B&B Electronics,"b&b electronics, bb electronics",advantech.com,US,industrial,Acquired by Advantech; still sells under B&B brand.
+Beckhoff Automation,beckhoff,beckhoff.com,DE,industrial,
+Beijer Electronics,beijer,beijerelectronics.com,SE,industrial,
+Beijing Fibridge,"fibridge, beijing fibridge",fibridge.com,CN,carrier,
+Belden,belden,belden.com,US,industrial,Parent of Hirschmann + GarrettCom.
+Big Switch Networks,"big switch, big cloud fabric",arista.com,US,nos,Acquired by Arista in 2020.
+Billion Electric,billion,billion.com,TW,smb,
+Brainboxes,brainboxes,brainboxes.com,UK,industrial,
+Brocade,brocade,broadcom.com,US,data_center,Campus business sold to Extreme; SAN/DC under Broadcom.
+Buffalo Technology,"buffalo, buffalo-technology",buffalotech.com,JP,smb,
+C-Data,"c-data, cdata",cdatatec.com,CN,carrier,
+Calix,calix,calix.com,US,carrier,Broadband access.
+Cambium Networks,"cambium, cnmatrix",cambiumnetworks.com,US,enterprise,cnMatrix switching line.
+Celestica,celestica,celestica.com,CA,data_center,White-box ODM.
+CERIO,cerio,cerio.com.tw,TW,smb,
+Chilink IoT,"chilink, chilinkiot",,CN,industrial,Verify domain.
+Ciena,ciena,ciena.com,US,carrier,
+Cisco,"cisco, catalyst, nexus, meraki",cisco.com,US,enterprise,"Includes Catalyst, Nexus, Meraki."
+ComNet,comnet,comnet.net,US,industrial,ACRE/Carrier; transit + security industrial.
+Cudy,cudy,cudy.com,CN,smb,
+Cumulus Networks,"cumulus, cumulus linux",nvidia.com,US,nos,Acquired by NVIDIA in 2020 (now NVIDIA Cumulus Linux).
+D-Link,"d-link, dlink",dlink.com,TW,smb,
+Datto,"datto, datto networking, datto by kaseya",datto.com,US,smb,Now a Kaseya brand.
+Dell Technologies,"dell, dell emc, powerswitch",dell.com,US,enterprise,PowerSwitch / N-series / S-series / Z-series.
+Delta Electronics,"delta, delta electronics",deltaww.com,TW,industrial,
+DrayTek,draytek,draytek.com,TW,smb,
+DriveNets,drivenets,drivenets.com,IL,carrier,Disaggregated routing.
+Edgecore Networks,"edgecore, edge-core, accton",edge-core.com,TW,data_center,Accton subsidiary; major white-box ODM.
+Edimax Technology,edimax,edimax.com,TW,smb,
+EnGenius,"engenius, egenius",engeniustech.com,US,smb,
+EtherWAN,etherwan,etherwan.com,TW,industrial,
+Extreme Networks,"extreme, extreme networks, extremeswitching",extremenetworks.com,US,enterprise,Owns ex-Brocade campus + ex-Avaya + ex-Aerohive.
+Fortinet,"fortinet, fortiswitch",fortinet.com,US,security,FortiSwitch line.
+FS.com,"fs, fiberstore, fs.com",fs.com,CN,smb,
+Fujitsu,fujitsu,fujitsu.com,JP,enterprise,"PRIMERGY network, carrier switches."
+GarrettCom,garrettcom,belden.com,US,industrial,Belden sub-brand for utility/rail.
+H3C,h3c,h3c.com,CN,enterprise,
+HARTING,harting,harting.com,DE,industrial,
+Hikvision,hikvision,hikvision.com,CN,security,CCTV/security PoE switches.
+Hirschmann,hirschmann,hirschmann.com,DE,industrial,Belden flagship industrial brand.
+Huawei,"huawei, cloudengine",huawei.com,CN,enterprise,CloudEngine series.
+ICP Electronics,"icp, icp das",icpdas.com,TW,industrial,
+Intellisystem Technologies,intellisystem,intellisystem.it,IT,industrial,
+IP Infusion,"ip infusion, ocnos",ipinfusion.com,US,nos,OcNOS — NOS for white-box hardware.
+Juniper Networks,"juniper, jnpr, qfx, ex-series",juniper.net,US,enterprise,"EX, QFX, PTX, ACX."
+Korenix Technology,korenix,korenix.com,TW,industrial,
+Kyland,kyland,kyland.com,CN,industrial,
+L-com,"l-com, lcom",l-com.com,US,industrial,
+Lantech Communications,lantech,lantechcom.com,TW,industrial,
+Lantronix,lantronix,lantronix.com,US,industrial,
+Lenovo,lenovo,lenovo.com,CN,data_center,Acquired IBM rack-switch line; ThinkSystem.
+LINKOH,linkoh,,CN,industrial,Verify domain.
+Linksys,linksys,linksys.com,US,smb,
+Maple Systems,maple systems,maplesystems.com,US,industrial,
+Micas Networks,micas,micasnetworks.com,US,data_center,
+MICROSENS,microsens,microsens.com,DE,industrial,
+MikroTik,"mikrotik, routeros, crs",mikrotik.com,LV,smb,RouterOS + SwitchOS.
+MOXA,moxa,moxa.com,TW,industrial,
+N-Tron,"n-tron, ntron",redlion.net,US,industrial,Now under Red Lion Controls.
+NEC,nec,nec.com,JP,enterprise,"IP8800, ProgrammableFlow."
+NETGEAR,netgear,netgear.com,US,smb,
+Nokia Networks,nokia,nokia.com,FI,carrier,
+Nomadix,nomadix,nomadix.com,US,specialty,Hospitality/guest networks.
+NoviFlow,"noviflow, novios",noviflow.com,CA,nos,NoviOS for white-box.
+NSGate,nsgate,nsgate.com,RU,industrial,
+NVIDIA,"nvidia, mellanox, spectrum, cumulus",nvidia.com,US,data_center,"Spectrum Ethernet, Quantum IB; ConnectX/BlueField are NICs/DPUs (not switches)."
+NVT Phybridge,"nvt phybridge, phybridge",nvtphybridge.com,CA,specialty,Long-reach PoE.
+Obsidian Controls,"obsidian, obsidian controls",obsidiancontrol.com,US,specialty,Entertainment / lighting networks.
+Omnitron Systems,omnitron,omnitron-systems.com,US,industrial,
+OpenSwitch,"openswitch, opx",openswitch.net,OSS,nos,Open-source NOS (Linux Foundation).
+Oracle,oracle,oracle.com,US,data_center,
+ORing Industrial,oring,oringnet.com,TW,industrial,
+Perle Systems,perle,perle.com,CA,industrial,
+Phoenix Contact,phoenix contact,phoenixcontact.com,DE,industrial,
+Pica8,"pica8, picos",pica8.com,US,nos,PicOS for white-box.
+PLANET Technology,"planet, planet technology",planet.com.tw,TW,smb,
+Pluribus Networks,"pluribus, netvisor",pluribusnetworks.com,US,nos,Netvisor ONE NOS.
+Proscend Communications,proscend,proscend.com,TW,industrial,
+QNAP Systems,qnap,qnap.com,TW,smb,
+Quanta Cloud Technology,"qct, quanta",qct.io,TW,data_center,
+Red Lion Controls,"red lion, redlion",redlion.net,US,industrial,Owns N-Tron.
+Reyee,reyee,reyeenetworks.com,CN,smb,Ruijie's SMB sub-brand.
+Ribbon Communications,ribbon,ribboncommunications.com,US,carrier,
+RS PRO,"rs pro, rs-online",rs-online.com,UK,specialty,Distributor house brand.
+Rubytech,rubytech,rubytech.com.tw,TW,smb,
+RUCKUS Networks,ruckus,commscope.com,US,enterprise,CommScope subsidiary.
+Ruijie Networks,ruijie,ruijienetworks.com,CN,enterprise,
+Schneider Electric,schneider,se.com,FR,industrial,
+Schweitzer Engineering Labs,"sel, schweitzer",selinc.com,US,industrial,Utility / substation networking.
+Scomp Enterprise,scomp,,HK,industrial,Verify domain.
+Signamax,signamax,signamax.com,US,industrial,
+Silicom,silicom,silicom-usa.com,IL,specialty,Server-side networking adapters / appliances.
+SONiC,sonic,sonicfoundation.dev,OSS,nos,"Open-source NOS, OCP-hosted."
+Sophos,sophos,sophos.com,UK,security,Sophos Switch for security stacks.
+StarTech,startech,startech.com,CA,smb,
+Supermicro,supermicro,supermicro.com,US,data_center,
+TE Connectivity,"te connectivity, te",te.com,CH,industrial,
+Tejas Networks,tejas,tejasnetworks.com,IN,carrier,
+Telco Systems,"telco, telco systems",telco-systems.com,US,carrier,
+Teltonika Networks,teltonika,teltonika-networks.com,LT,industrial,
+Tenda,tenda,tendacn.com,CN,smb,
+TOTOLINK,totolink,totolink.net,KR,smb,
+TP-Link,"tp-link, tplink, tp link, omada, jetstream",tp-link.com,CN,smb,Omada (managed) / JetStream lines.
+TRENDnet,"trendnet, teg-, tpe-",trendnet.com,US,smb,
+Ubiquiti,"ubiquiti, ubnt, unifi, usw",ui.com,US,smb,UniFi switching line.
+UfiSpace,ufispace,ufispace.com,TW,data_center,
+Versa Networks,versa,versa-networks.com,US,carrier,Primarily SD-WAN; some switching SKUs.
+Vertiv,vertiv,vertiv.com,US,specialty,Rack/KVM-over-IP.
+Volktek,volktek,volktek.com,TW,industrial,
+WAGO,wago,wago.com,DE,industrial,
+Wanglink,wanglink,,CN,smb,Verify domain.
+WatchGuard,watchguard,watchguard.com,US,security,
+Westermo,westermo,westermo.com,SE,industrial,
+Xexagon,xexagon,,,specialty,Verify name + domain.
+Yamaha,"yamaha, netvolante",network.yamaha.com,JP,enterprise,Network division (separate from audio).
+Yokogawa,yokogawa,yokogawa.com,JP,industrial,
+ZTE,zte,zte.com.cn,CN,carrier,
+Zyxel,zyxel,zyxel.com,TW,smb,
