@@ -97,3 +97,41 @@ CREATE TABLE IF NOT EXISTS firmware_versions (
 CREATE INDEX IF NOT EXISTS idx_fw_vendor_nos ON firmware_versions(vendor, nos);
 CREATE INDEX IF NOT EXISTS idx_fw_version ON firmware_versions(version);
 CREATE INDEX IF NOT EXISTS idx_fw_date ON firmware_versions(release_date);
+
+
+-- Security advisories (CVEs) keyed by (cve_id, vendor).
+-- Populated from public sources (NIST NVD). Decoupled from firmware_versions
+-- so we can surface vulnerability data even when full release notes are
+-- behind a vendor login wall.
+CREATE TABLE IF NOT EXISTS security_advisories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    cve_id TEXT NOT NULL,            -- e.g. CVE-2022-23679
+    vendor TEXT NOT NULL,            -- 'HPE Aruba' / 'Cisco' / ...
+    nos TEXT,                        -- 'AOS-CX' / 'IOS-XE' / 'Junos' / ...
+
+    published TEXT,                  -- ISO date (NVD publishedDate)
+    last_modified TEXT,              -- ISO date (NVD lastModifiedDate)
+    severity TEXT,                   -- CRITICAL / HIGH / MEDIUM / LOW
+    cvss_score REAL,                 -- CVSS v3.1 base score (preferred), else v3.0/v2
+    cvss_vector TEXT,
+    description TEXT,                -- English description
+
+    -- JSON array of {product, start, start_incl, end, end_incl} ranges
+    -- Each range describes a contiguous block of affected versions.
+    affected_ranges TEXT,
+
+    -- JSON array of version strings derived from each range's upper bound
+    -- (the first known *fixed* version)
+    fixed_versions TEXT,
+
+    references_json TEXT,            -- JSON array of {url, source}
+    source TEXT,                     -- 'nvd' / 'cisco-psirt' / etc.
+    last_updated TEXT,
+
+    UNIQUE(cve_id, vendor)
+);
+
+CREATE INDEX IF NOT EXISTS idx_adv_vendor_nos ON security_advisories(vendor, nos);
+CREATE INDEX IF NOT EXISTS idx_adv_cve ON security_advisories(cve_id);
+CREATE INDEX IF NOT EXISTS idx_adv_severity ON security_advisories(severity);

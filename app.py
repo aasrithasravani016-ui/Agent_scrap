@@ -35,52 +35,43 @@ def _inject_css():
         html, body, [class*="css"], .stApp {
             font-family: 'Inter', system-ui, sans-serif;
         }
-        .stApp {
-            background:
-              radial-gradient(1200px 600px at 50% -10%, #E8EEFF 0%, rgba(232,238,255,0) 60%),
-              linear-gradient(180deg, #F6F8FD 0%, #FFFFFF 40%);
-        }
+        .stApp { background: #FFFFFF; }
         section[data-testid="stSidebar"],
         [data-testid="collapsedControl"] { display: none; }
 
         .block-container {
-            padding-top: 2.4rem; padding-bottom: 4rem; max-width: 1000px;
+            padding-top: 2.2rem; padding-bottom: 4rem; max-width: 880px;
         }
         h1, h2, h3 { letter-spacing: -0.02em; color: #0F1B33; }
 
-        /* ---------- Hero ---------- */
-        .hero {
-            background: linear-gradient(135deg, #2F6FED 0%, #1E40AF 100%);
-            border-radius: 22px; padding: 2.3rem 2.4rem;
-            color: #fff; box-shadow: 0 18px 40px -18px rgba(31,64,175,.55);
-            margin-bottom: 1.6rem;
+        /* ---------- Minimal brand header ---------- */
+        .brand {
+            font-size: 1.02rem; font-weight: 600; color: #0F1B33;
+            letter-spacing: -0.005em; margin: 0 0 1.5rem;
+            display: flex; align-items: center;
         }
-        .hero h1 {
-            color: #fff; font-size: 2.05rem; font-weight: 800;
-            margin: 0 0 .35rem;
-        }
-        .hero p { color: #DCE6FF; font-size: 1rem; margin: 0; max-width: 640px; }
-        .hero .pill {
-            display: inline-block; background: rgba(255,255,255,.16);
-            color: #fff; font-size: .74rem; font-weight: 600;
-            letter-spacing: .04em; text-transform: uppercase;
-            padding: .28rem .7rem; border-radius: 999px; margin-bottom: .9rem;
+        .brand::before {
+            content: ""; display: inline-block; width: 8px; height: 8px;
+            border-radius: 50%; background: #2F6FED; margin-right: .55rem;
         }
 
-        /* ---------- Segmented nav (radio) ---------- */
+        /* ---------- Tabs (radio styled as underlined text tabs) ---------- */
         div[role="radiogroup"] {
-            display: flex; gap: .4rem; background: #EEF2FB;
-            padding: .35rem; border-radius: 14px; width: fit-content;
-            margin: 0 auto 1.8rem; border: 1px solid #E3E8F0;
+            display: flex; gap: 0; background: transparent;
+            padding: 0; border-radius: 0; width: 100%;
+            margin: 0 0 1.6rem; border: none;
+            border-bottom: 1px solid #E6EAF2;
         }
         div[role="radiogroup"] > label {
-            border-radius: 10px; padding: .55rem 1.25rem !important;
-            margin: 0 !important; cursor: pointer; font-weight: 600;
-            color: #5B6573; transition: all .15s ease;
+            border-radius: 0; padding: .55rem 0 .75rem !important;
+            margin: 0 1.8rem 0 0 !important; cursor: pointer; font-weight: 500;
+            color: #6B7488; transition: color .15s ease;
+            background: transparent !important; box-shadow: none !important;
+            border-bottom: 2px solid transparent; font-size: .92rem;
         }
         div[role="radiogroup"] > label:has(input:checked) {
-            background: #fff; color: #1E40AF;
-            box-shadow: 0 4px 12px -4px rgba(31,64,175,.35);
+            color: #0F1B33; border-bottom-color: #2F6FED; font-weight: 600;
+            background: transparent !important; box-shadow: none !important;
         }
         div[role="radiogroup"] > label > div:first-child { display: none; }
 
@@ -175,14 +166,9 @@ def _set_q(value: str):
     st.session_state.q = value
 
 
-# ---------- Hero ----------
+# ---------- Header (minimal) ----------
 st.markdown(
-    '<div class="hero">'
-    '<span class="pill">Network Engineering</span>'
-    '<h1>Switch Spec Agent</h1>'
-    '<p>Instant specifications and firmware guidance for enterprise '
-    'network switches — search any model or compare two side by side.</p>'
-    '</div>',
+    '<div class="brand">Switch Spec Agent</div>',
     unsafe_allow_html=True,
 )
 
@@ -511,21 +497,98 @@ else:
             fw_version = st.text_input(
                 "Current firmware version", placeholder="e.g. 7.10.2")
 
-    if fw_model and fw_version:
-        advice = agent.firmware_advise(fw_model, fw_version)
-
-        if not advice.has_data:
-            st.info(advice.message)
-            if advice.portal_url:
-                st.markdown(
-                    f'<div class="ds-link"><a href="{advice.portal_url}" '
-                    f'target="_blank">Vendor portal ↗</a></div>',
+    # ---- Rendering helpers ----
+    def _render_advisories(advs):
+        """Render the CVE table from security_advisories (NIST NVD).
+        Always grouped by severity, with affected/fixed version ranges
+        and reference links."""
+        if not advs:
+            return
+        sev_color = {
+            "CRITICAL": "#B91C1C", "HIGH": "#C2410C",
+            "MEDIUM": "#A16207",   "LOW": "#1E40AF",
+        }
+        st.markdown(
+            f'<div class="section-title">🔒 Security advisories '
+            f'affecting your version ({len(advs)})</div>',
+            unsafe_allow_html=True)
+        st.caption("Source: NIST National Vulnerability Database "
+                   "(public, no login).")
+        for a in advs[:25]:
+            color = sev_color.get((a.severity or "").upper(), "#475569")
+            sev_label = (f"{a.severity} · CVSS {a.cvss_score}"
+                         if a.cvss_score else (a.severity or ""))
+            with st.container(border=True):
+                head_l, head_r = st.columns([3, 1])
+                head_l.markdown(
+                    f'**{a.cve_id}** &nbsp;'
+                    f'<span style="background:{color};color:#fff;'
+                    f'border-radius:6px;padding:2px 8px;font-size:.75rem;'
+                    f'font-weight:700;">{sev_label}</span>',
                     unsafe_allow_html=True)
+                if a.published:
+                    head_r.caption(f"Published {a.published}")
+                if a.description:
+                    desc = (a.description[:380] + "…"
+                            if len(a.description) > 380 else a.description)
+                    st.write(desc)
+                rng_lines = []
+                for r in a.affected_ranges[:6]:
+                    lo = r.get("start") or "*"
+                    hi = r.get("end") or "*"
+                    lo_op = "≥" if r.get("start_incl") else ">"
+                    hi_op = "≤" if r.get("end_incl") else "<"
+                    rng_lines.append(
+                        f"`{r.get('product','')}` &nbsp;{lo_op} {lo} "
+                        f"&nbsp; {hi_op} {hi}")
+                if rng_lines:
+                    st.markdown("**Affected:** " + "  ·  ".join(rng_lines),
+                                unsafe_allow_html=True)
+                if a.fixed_versions:
+                    st.markdown(
+                        "**Fixed in:** " + ", ".join(
+                            f"`{v}`" for v in a.fixed_versions),
+                        unsafe_allow_html=True)
+                refs = [r for r in (a.references or [])
+                        if "nvd.nist.gov" not in (r.get("url") or "")][:1]
+                if refs:
+                    st.markdown(f"[Vendor advisory ↗]({refs[0]['url']})")
+        if len(advs) > 25:
+            st.caption(f"… and {len(advs) - 25} more. Showing top 25 by "
+                       "severity.")
+
+    def _render_firmware_advice(advice):
+        # Headline banner — framing depends on what we found.
+        if advice.advisories:
+            head = (f"⚠ {len(advice.advisories)} CVE(s) affect "
+                    f"{advice.vendor} {advice.nos or ''} "
+                    f"{advice.current_version}.")
+            if advice.recommended_min_version:
+                head += (f" Earliest fully-patched version: "
+                         f"**{advice.recommended_min_version}**")
+            st.error(head)
+        elif advice.release_notes_gated and advice.has_data:
+            st.warning(advice.message)
+        elif not advice.has_data:
+            st.info(advice.message)
         elif not advice.diff:
             st.success(advice.message)
-        else:
+
+        if advice.portal_url and advice.release_notes_gated:
+            st.markdown(
+                f'<div class="ds-link"><a href="{advice.portal_url}" '
+                f'target="_blank">Vendor portal (full release notes) ↗</a>'
+                f'</div>',
+                unsafe_allow_html=True)
+
+        _render_advisories(advice.advisories)
+
+        if advice.diff:
             d = advice.diff
             cur, tgt = d.current, d.target
+            st.markdown(
+                '<div class="section-title">📦 Release notes diff</div>',
+                unsafe_allow_html=True)
             with st.container(border=True):
                 c1, c2, c3 = st.columns(3)
                 with c1:
@@ -538,11 +601,10 @@ else:
                         st.caption(f"Released {tgt.release_date}")
                 with c3:
                     st.metric("Releases behind", d.releases_behind)
-
                 if d.security_fixes:
                     st.markdown(
                         '<div class="section-title">🔒 Security fixes '
-                        f'({len(d.security_fixes)})</div>',
+                        f'in changelog ({len(d.security_fixes)})</div>',
                         unsafe_allow_html=True)
                     for fix in d.security_fixes[:20]:
                         st.write(f"- {fix}")
@@ -569,6 +631,10 @@ else:
                         f'href="{tgt.release_notes_url}" target="_blank">'
                         f'Full release notes ↗</a></div>',
                         unsafe_allow_html=True)
+
+    if fw_model and fw_version:
+        advice = agent.firmware_advise(fw_model, fw_version)
+        _render_firmware_advice(advice)
 
 # ---------- Footer ----------
 st.markdown(

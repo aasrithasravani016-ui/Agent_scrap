@@ -320,6 +320,147 @@ def firmware_diff(
 
 
 # -----------------------------------------------------------------------------
+# Security advisories (CVE data) — populated by scrapers.nvd_fetcher
+# -----------------------------------------------------------------------------
+
+@dataclass
+class Advisory:
+    """One CVE affecting a vendor's NOS. Mirrors security_advisories table."""
+    cve_id: str
+    vendor: str
+    nos: Optional[str]
+    published: Optional[str] = None
+    last_modified: Optional[str] = None
+    severity: Optional[str] = None      # CRITICAL / HIGH / MEDIUM / LOW
+    cvss_score: Optional[float] = None
+    cvss_vector: Optional[str] = None
+    description: Optional[str] = None
+    affected_ranges: list[dict] = field(default_factory=list)
+    fixed_versions: list[str] = field(default_factory=list)
+    references: list[dict] = field(default_factory=list)
+    source: Optional[str] = None
+
+
+_SEVERITY_RANK = {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1, None: 0}
+
+
+def _row_to_advisory(row: sqlite3.Row) -> Advisory:
+    def _j(value):
+        if not value:
+            return []
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return []
+    return Advisory(
+        cve_id=row["cve_id"],
+        vendor=row["vendor"],
+        nos=row["nos"],
+        published=row["published"],
+        last_modified=row["last_modified"],
+        severity=row["severity"],
+        cvss_score=row["cvss_score"],
+        cvss_vector=row["cvss_vector"],
+        description=row["description"],
+        affected_ranges=_j(row["affected_ranges"]),
+        fixed_versions=_j(row["fixed_versions"]),
+        references=_j(row["references_json"]),
+        source=row["source"],
+    )
+
+
+def list_advisories(
+    vendor: str, nos: Optional[str] = None, db_path: Path = DB_PATH,
+) -> list[Advisory]:
+    if not db_path.exists():
+        return []
+    con = sqlite3.connect(db_path)
+    con.row_factory = sqlite3.Row
+    # Some older DBs may pre-date the table; tolerate that gracefully.
+    try:
+        if nos:
+            rows = con.execute(
+                "SELECT * FROM security_advisories WHERE vendor=? AND nos=?",
+                (vendor, nos),
+            ).fetchall()
+        else:
+            rows = con.execute(
+                "SELECT * FROM security_advisories WHERE vendor=?",
+                (vendor,),
+            ).fetchall()
+    except sqlite3.OperationalError:
+        rows = []
+    con.close()
+    return [_row_to_advisory(r) for r in rows]
+
+
+def _version_in_range(version: Version, rng: dict) -> bool:
+    """True iff `version` falls inside the {start, start_incl, end, end_incl}
+    range. None bounds mean unbounded on that side."""
+    start = parse_version(rng.get("start")) if rng.get("start") else None
+    end = parse_version(rng.get("end")) if rng.get("end") else None
+    start_incl = bool(rng.get("start_incl"))
+    end_incl = bool(rng.get("end_incl"))
+    if start is not None:
+        if start_incl:
+            if version < start:
+                return False
+        else:
+            if version <= start:
+                return False
+    if end is not None:
+        if end_incl:
+            if version > end:
+                return False
+        else:
+            if version >= end:
+                return False
+    return True
+
+
+def advisories_for_version(
+    vendor: str,
+    nos: Optional[str],
+    current_version: str,
+    db_path: Path = DB_PATH,
+) -> list[Advisory]:
+    """Return all known CVEs whose affected ranges include current_version.
+    Sorted highest-severity first, then by CVSS score, then by date."""
+    v = parse_version(current_version)
+    if v is None:
+        return []
+    matching: list[Advisory] = []
+    for adv in list_advisories(vendor, nos, db_path=db_path):
+        for rng in adv.affected_ranges:
+            if _version_in_range(v, rng):
+                matching.append(adv)
+                break
+    matching.sort(
+        key=lambda a: (
+            -_SEVERITY_RANK.get((a.severity or "").upper(), 0),
+            -(a.cvss_score or 0.0),
+            a.published or "",
+        )
+    )
+    return matching
+
+
+def minimum_fixed_version(advisories: list[Advisory]) -> Optional[str]:
+    """Across a list of advisories, find the smallest 'fixed_versions' entry
+    that's >= all known fixes. Heuristic — vendors don't always backport, so
+    the user should still read the per-CVE notes."""
+    fixes = []
+    for a in advisories:
+        for fv in a.fixed_versions:
+            v = parse_version(fv)
+            if v is not None:
+                fixes.append(v)
+    if not fixes:
+        return None
+    return max(fixes).raw
+
+
+# -----------------------------------------------------------------------------
 # Top-level advice
 # -----------------------------------------------------------------------------
 
@@ -340,13 +481,29 @@ FETCHER_KEYS = {
     "NVIDIA": "cumulus",
 }
 
-# Vendors whose firmware info is behind partner logins (we cannot fetch)
+# Vendors whose full *release notes* are behind a vendor login portal —
+# but whose security advisories ARE publicly available via NIST NVD and
+# ingested by scrapers.nvd_fetcher. We surface the CVE data even when we
+# don't have the full changelog.
 LOGIN_GATED_VENDORS = {
     "Cisco": "https://software.cisco.com",
     "Juniper": "https://support.juniper.net/support/downloads/",
     "Arista": "https://www.arista.com/en/support/software-download",
     "HPE Aruba": "https://asp.arubanetworks.com",
     "Dell": "https://www.dell.com/support",  # partially public
+    "Fortinet": "https://support.fortinet.com",
+}
+
+# vendor -> default NOS used when caller didn't specify one and the
+# vendor's release notes are login-gated (so we can't infer NOS from
+# firmware_versions). Used to pick the right CVE bucket.
+DEFAULT_GATED_NOS = {
+    "HPE Aruba": "AOS-CX",
+    "Cisco": "IOS-XE",
+    "Juniper": "Junos",
+    "Arista": "EOS",
+    "Dell": "SmartFabric OS10",
+    "Fortinet": "FortiSwitch",
 }
 
 
@@ -360,6 +517,13 @@ class FirmwareAdvice:
     message: str = ""
     diff: Optional[FirmwareDiff] = None
     portal_url: Optional[str] = None
+    # CVE data — populated from security_advisories (NVD). Independent of
+    # diff, which comes from firmware_versions (vendor changelog).
+    advisories: list[Advisory] = field(default_factory=list)
+    recommended_min_version: Optional[str] = None
+    # True when full release notes need a vendor login (CVE data may still
+    # be available below via `advisories`).
+    release_notes_gated: bool = False
 
 
 def advise(
@@ -372,32 +536,27 @@ def advise(
 ) -> FirmwareAdvice:
     """
     Top-level firmware advice. Always returns a FirmwareAdvice (never None).
-    Caller checks .has_data and .diff.
-    """
-    # Honest: vendor is login-gated, we have no data
-    if vendor in LOGIN_GATED_VENDORS:
-        return FirmwareAdvice(
-            vendor=vendor,
-            nos=nos,
-            current_version=current_version,
-            has_data=False,
-            message=(
-                f"Firmware release notes for {vendor} are behind a vendor "
-                f"login portal and are not accessible to this agent. Log in "
-                f"with your account to check for updates."
-            ),
-            portal_url=LOGIN_GATED_VENDORS[vendor],
-        )
 
-    # Decide which NOS to query. For vendors we publish firmware for, the
-    # canonical NOS (e.g. MikroTik -> "RouterOS") is authoritative — the
-    # switch row's free-text nos ("RouterOS / SwitchOS") won't match the
-    # firmware registry, so prefer the canonical name when we have one.
+    Combines two independent data sources:
+      - firmware_versions  (vendor changelogs — public-vendor fetchers)
+      - security_advisories (CVE data from NIST NVD — works for all
+        major vendors including login-gated ones)
+
+    For login-gated vendors we still surface CVE data and an
+    "earliest fix" version recommendation, instead of just bouncing the
+    user to a login portal.
+    """
+    gated = vendor in LOGIN_GATED_VENDORS
+
+    # Decide which NOS to query. Priority:
+    #   1. Explicit nos= argument
+    #   2. Canonical NOS for vendors we publish firmware for
+    #   3. Default NOS for login-gated vendors (CVE data is bucketed per-NOS)
     canonical = PUBLIC_FIRMWARE_VENDORS.get(vendor)
     if canonical:
         nos = canonical
-    elif not nos:
-        nos = canonical
+    elif not nos and gated:
+        nos = DEFAULT_GATED_NOS.get(vendor)
     if not nos:
         return FirmwareAdvice(
             vendor=vendor, nos=None,
@@ -406,10 +565,59 @@ def advise(
             message=f"No NOS specified and no default known for {vendor}.",
         )
 
-    # Try to build the diff
+    # Pull CVE data first — it's the layer that works for every vendor.
+    advisories = advisories_for_version(
+        vendor, nos, current_version, db_path=db_path,
+    )
+    min_fix = minimum_fixed_version(advisories) if advisories else None
+
+    # Then try the changelog diff (vendor-published release notes).
     diff = firmware_diff(vendor, nos, current_version, db_path=db_path)
+
+    if gated:
+        portal = LOGIN_GATED_VENDORS[vendor]
+        if advisories:
+            msg = (
+                f"Found {len(advisories)} published CVE(s) affecting "
+                f"{vendor} {nos} {current_version}. Full release notes for "
+                f"this NOS require a vendor login (see portal link), but "
+                f"the security-advisory data below is from NIST NVD and "
+                f"is up-to-date."
+            )
+        else:
+            # No CVEs match this version — could mean the version string
+            # doesn't match NVD's CPE format, or the version is unaffected,
+            # or we haven't ingested NVD yet.
+            n_total = len(list_advisories(vendor, nos, db_path=db_path))
+            if n_total == 0:
+                msg = (
+                    f"No security-advisory data cached for {vendor} {nos}. "
+                    f"Run `python3 fetch_firmware.py nvd --nvd-vendor "
+                    f"{vendor.split()[-1].lower()}` to populate it from "
+                    f"NIST NVD (free, no login)."
+                )
+            else:
+                msg = (
+                    f"{n_total} CVE(s) are known for {vendor} {nos}, but "
+                    f"none match firmware version {current_version}. Either "
+                    f"the version is unaffected or the version string is "
+                    f"not in the NVD-recognized format. Full release notes "
+                    f"require a vendor login."
+                )
+        return FirmwareAdvice(
+            vendor=vendor, nos=nos,
+            current_version=current_version,
+            has_data=bool(advisories) or bool(diff),
+            message=msg,
+            diff=diff,
+            portal_url=portal,
+            advisories=advisories,
+            recommended_min_version=min_fix,
+            release_notes_gated=True,
+        )
+
+    # Non-gated vendors: prefer the changelog diff, fall back to advisory data.
     if not diff:
-        # See if we at least have some data for this NOS
         if not list_firmware(vendor, nos, db_path=db_path):
             key = FETCHER_KEYS.get(vendor)
             if key:
@@ -422,8 +630,10 @@ def advise(
             return FirmwareAdvice(
                 vendor=vendor, nos=nos,
                 current_version=current_version,
-                has_data=False,
+                has_data=bool(advisories),
                 message=msg,
+                advisories=advisories,
+                recommended_min_version=min_fix,
             )
         return FirmwareAdvice(
             vendor=vendor, nos=nos,
@@ -433,6 +643,8 @@ def advise(
                 f"{current_version} appears to be at or newer than the latest "
                 f"known release. Nothing to upgrade to."
             ),
+            advisories=advisories,
+            recommended_min_version=min_fix,
         )
 
     return FirmwareAdvice(
@@ -440,6 +652,8 @@ def advise(
         current_version=current_version,
         has_data=True,
         diff=diff,
+        advisories=advisories,
+        recommended_min_version=min_fix,
     )
 
 

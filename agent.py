@@ -584,23 +584,48 @@ class SpecAgent:
     # ---------- Firmware advisor ----------
 
     def firmware_advise(self, query: str, current_version: str):
-        """Look up the switch to determine vendor + NOS, then return a
-        FirmwareAdvice (see firmware.py). Always returns an object."""
+        """Look up the switch (or just vendor) to determine vendor + NOS,
+        then return a FirmwareAdvice (see firmware.py). Always returns an
+        object.
+
+        The user may type:
+          • a specific model ("Cisco Catalyst 9300-48P") — full spec lookup
+          • a vendor alone ("Aruba", "Cisco", "Juniper") — vendor-level
+            advisory lookup, useful when they just have firmware version +
+            vendor name and want CVE data
+        """
         from firmware import advise as _advise, FirmwareAdvice
+
+        # First try a full model lookup (gives us NOS from spec data).
         spec = self.lookup(query, limit=1)
-        if not spec:
-            return FirmwareAdvice(
-                vendor="Unknown", nos=None,
+        if spec:
+            s = spec[0]
+            return _advise(
+                vendor=s.get("vendor", ""),
+                nos=s.get("nos"),
                 current_version=current_version,
-                has_data=False,
-                message=f"Switch not found: {query!r}",
+                model=s.get("model"),
             )
-        s = spec[0]
-        return _advise(
-            vendor=s.get("vendor", ""),
-            nos=s.get("nos"),
+
+        # No model match — fall back to vendor-only resolution. This is
+        # what makes "Aruba" + "10.08.1000" work even without a specific
+        # switch model in our DB.
+        vendor = self._extract_vendor(query)
+        if vendor:
+            return _advise(
+                vendor=vendor, nos=None,
+                current_version=current_version,
+            )
+
+        return FirmwareAdvice(
+            vendor="Unknown", nos=None,
             current_version=current_version,
-            model=s.get("model"),
+            has_data=False,
+            message=(
+                f"Could not identify vendor or model from {query!r}. Try a "
+                "specific model name (e.g. 'Cisco Catalyst 9300-48P') or a "
+                "vendor name (e.g. 'Aruba', 'Cisco', 'Juniper')."
+            ),
         )
 
     # ---------- Formatting ----------
