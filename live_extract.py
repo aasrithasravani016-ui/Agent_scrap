@@ -48,6 +48,7 @@ VENDOR_DOMAINS = {
     "fortinet.com", "fs.com", "cambiumnetworks.com",
     "edge-core.com", "lenovo.com", "moxa.com",
     "allied-telesis.com", "alliedtelesis.com",
+    "trendnet.com",
 }
 
 
@@ -323,6 +324,20 @@ def live_lookup(
     if not pages:
         logger.warning("No pages fetched")
         return None
+
+    # Drop pages that look like multi-product catalogs or don't mention
+    # the queried model at all — they're the reason TEG-30284 was getting
+    # 12-port / 240-Gbps numbers from some other model in a TRENDnet
+    # product catalog PDF.
+    filtered = _filter_pages_to_model(pages, query)
+    if filtered:
+        logger.info("[%.1fs left] Model-match filter: %d/%d pages kept",
+                    remaining(), len(filtered), len(pages))
+        pages = filtered
+    else:
+        logger.info("[%.1fs left] Model-match filter rejected all pages — "
+                    "falling back to all sources (low confidence)",
+                    remaining())
     logger.info("[%.1fs left] Got %d/%d pages",
                 remaining(), len(pages), len(urls))
 
@@ -466,6 +481,56 @@ def _extract_image(pages: dict[str, bytes]) -> Optional[str]:
         except Exception as e:
             logger.debug("Image extract from %s failed: %s", url, e)
     return None
+
+
+# Heuristic: a SKU-like token is uppercase letters + digits + hyphens.
+_SKU_TOKEN = re.compile(r"\b[A-Z][A-Z]+[-]?\d{2,}[\w\-]*\b")
+
+
+def _page_text(content: bytes, limit: int = 200_000) -> str:
+    """Decode HTML/PDF bytes to lowercase plaintext for keyword checks."""
+    try:
+        if content[:4] == b"%PDF":
+            from scrapers.parsers import pdf_to_text
+            return pdf_to_text(content[:limit]).lower()
+        return content[:limit].decode("utf-8", errors="replace").lower()
+    except Exception:
+        return ""
+
+
+def _filter_pages_to_model(pages: dict[str, bytes], query: str) -> dict[str, bytes]:
+    """Keep only pages that genuinely describe the queried model.
+
+    Two rejections:
+      - page does NOT mention the queried model SKU at all
+      - page is a multi-product catalog (>8 distinct SKU-like tokens),
+        even if it does mention the model — its spec rows can't be
+        reliably attributed.
+    """
+    if not query:
+        return pages
+    norm = re.sub(r"[^a-z0-9]", "", query.lower())
+    if len(norm) < 4:
+        return pages
+
+    kept = {}
+    for url, content in pages.items():
+        text = _page_text(content)
+        if not text:
+            continue
+        # mention check (normalised, both ways for partial typos)
+        norm_text = re.sub(r"[^a-z0-9]", "", text)
+        if norm not in norm_text:
+            logger.debug("filter: %s drops — model %r not mentioned", url, query)
+            continue
+        # multi-product catalog guard — count distinct SKU patterns in
+        # the raw (pre-normalised) text, capped to a 60k window.
+        skus = set(_SKU_TOKEN.findall(text[:60_000].upper()))
+        if len(skus) > 8:
+            logger.debug("filter: %s drops — catalog (%d SKUs)", url, len(skus))
+            continue
+        kept[url] = content
+    return kept
 
 
 # Keys we deliberately drop from "extras" because they're either pure

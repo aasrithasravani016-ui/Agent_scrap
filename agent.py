@@ -45,6 +45,9 @@ VENDOR_ALIASES = {
     "tp link": "TP-Link",
     "omada": "TP-Link",
     "netgear": "Netgear",
+    "trendnet": "TRENDnet",
+    "teg-": "TRENDnet",
+    "tpe-": "TRENDnet",
 }
 
 # Spec field labels for pretty output
