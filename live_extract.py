@@ -487,25 +487,13 @@ def _extract_image(pages: dict[str, bytes]) -> Optional[str]:
 _SKU_TOKEN = re.compile(r"\b[A-Z][A-Z]+[-]?\d{2,}[\w\-]*\b")
 
 
-def _page_text(content: bytes, limit: int = 200_000) -> str:
-    """Decode HTML/PDF bytes to lowercase plaintext for keyword checks."""
-    try:
-        if content[:4] == b"%PDF":
-            from scrapers.parsers import pdf_to_text
-            return pdf_to_text(content[:limit]).lower()
-        return content[:limit].decode("utf-8", errors="replace").lower()
-    except Exception:
-        return ""
-
-
 def _filter_pages_to_model(pages: dict[str, bytes], query: str) -> dict[str, bytes]:
     """Keep only pages that genuinely describe the queried model.
 
-    Two rejections:
-      - page does NOT mention the queried model SKU at all
-      - page is a multi-product catalog (>8 distinct SKU-like tokens),
-        even if it does mention the model — its spec rows can't be
-        reliably attributed.
+    Fast (no PDF library calls — raw bytes scan + URL check):
+      - URL that names the model -> trusted, kept immediately
+      - otherwise the bytes must contain the model SKU AND not look
+        like a multi-product catalog (>12 distinct SKU patterns).
     """
     if not query:
         return pages
@@ -515,18 +503,19 @@ def _filter_pages_to_model(pages: dict[str, bytes], query: str) -> dict[str, byt
 
     kept = {}
     for url, content in pages.items():
-        text = _page_text(content)
-        if not text:
+        url_n = re.sub(r"[^a-z0-9]", "", url.lower())
+        if norm in url_n:
+            kept[url] = content
             continue
-        # mention check (normalised, both ways for partial typos)
-        norm_text = re.sub(r"[^a-z0-9]", "", text)
-        if norm not in norm_text:
-            logger.debug("filter: %s drops — model %r not mentioned", url, query)
+        try:
+            text = content[:200_000].decode("latin-1", errors="ignore").lower()
+        except Exception:
             continue
-        # multi-product catalog guard — count distinct SKU patterns in
-        # the raw (pre-normalised) text, capped to a 60k window.
-        skus = set(_SKU_TOKEN.findall(text[:60_000].upper()))
-        if len(skus) > 8:
+        if norm not in re.sub(r"[^a-z0-9]", "", text):
+            logger.debug("filter: %s drops — %r not in content", url, query)
+            continue
+        skus = set(_SKU_TOKEN.findall(text[:30_000].upper()))
+        if len(skus) > 12:
             logger.debug("filter: %s drops — catalog (%d SKUs)", url, len(skus))
             continue
         kept[url] = content
