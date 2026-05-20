@@ -121,6 +121,11 @@ def _inject_css():
             border-radius:8px; padding:.2rem .6rem; font-size:.8rem;
             font-weight:600; letter-spacing:.02em;
         }
+        .src-tag {
+            display:inline-block; margin-left:.55rem; font-size:.72rem;
+            color:#6B7488; letter-spacing:.03em; vertical-align: middle;
+        }
+        .src-tag .dot { color:#22a06b; font-size:.85rem; }
         .ds-link a {
             display:inline-block; margin-top:.6rem; background:#2F6FED;
             color:#fff !important; text-decoration:none; font-weight:600;
@@ -375,7 +380,7 @@ def _render_spec_sections(top: dict):
                    "— see the datasheet link above.")
 
 
-def _render_spec_detail(top: dict):
+def _render_spec_detail(top: dict, source: str = ""):
     with st.container(border=True):
         has_img = bool(top.get("image_url"))
         if has_img:
@@ -389,8 +394,12 @@ def _render_spec_detail(top: dict):
         else:
             head = st
 
+        tag = ""
+        if source == "live":
+            tag = ('<span class="src-tag"><span class="dot">●</span> '
+                   'live · cached</span>')
         head.markdown(
-            f'<span class="vendor-badge">{top.get("vendor","")}</span>',
+            f'<span class="vendor-badge">{top.get("vendor","")}</span>{tag}',
             unsafe_allow_html=True,
         )
         head.markdown(f"### {top.get('model','')}")
@@ -431,17 +440,11 @@ def _render_spec_detail(top: dict):
 #  SEARCH SPECIFICATIONS
 # ============================================================
 if mode.endswith("Search specifications"):
-    st.markdown('<div class="section-title">Search specifications</div>'
-                '<div class="section-desc">Type a switch model, or '
-                '“compare A vs B”. Not in our records? We fetch it live.</div>',
-                unsafe_allow_html=True)
-
     st.text_input(
         "Search",
         key="q",
         label_visibility="collapsed",
-        placeholder="e.g.  Cisco Catalyst 9300-48P   ·   "
-        "compare C9300-48P vs EX4400-48P",
+        placeholder="Search a switch model · or compare A vs B",
     )
     q = st.session_state.q.strip()
 
@@ -460,8 +463,7 @@ if mode.endswith("Search specifications"):
         elapsed_ms = (time.time() - t0) * 1000
 
         if resp["type"] == "spec":
-            st.success(resp["message"])
-            _render_spec_detail(resp["result"])
+            _render_spec_detail(resp["result"], source=resp.get("source", ""))
             if resp.get("alternates"):
                 with st.expander(
                         f"Other matches ({len(resp['alternates'])})"):
@@ -470,7 +472,6 @@ if mode.endswith("Search specifications"):
             st.caption(f"Answered in {elapsed_ms:.0f} ms")
 
         elif resp["type"] == "compare":
-            st.success(resp["message"])
             recs = resp["results"]
             fields = [k for k in LABELS
                       if k not in ("datasheet_url", "image_url")]
@@ -494,23 +495,12 @@ if mode.endswith("Search specifications"):
             st.caption(f"Answered in {elapsed_ms:.0f} ms")
 
         else:
-            # Filter / vendor / not-found: never expose the catalog.
-            st.info(
-                "Enter a specific switch model (e.g. *Cisco Catalyst "
-                "9300-48P*) or compare two models with "
-                "*compare A vs B*."
-            )
+            st.caption("Try a specific model — e.g. *Cisco Catalyst 9300-48P*.")
 
 # ============================================================
 #  FIRMWARE ADVISOR
 # ============================================================
 else:
-    st.markdown('<div class="section-title">Firmware advisor</div>'
-                '<div class="section-desc">See what changed since your '
-                'current firmware — security fixes, features and '
-                'deprecations.</div>',
-                unsafe_allow_html=True)
-
     with st.container(border=True):
         c1, c2 = st.columns([2, 1])
         with c1:
