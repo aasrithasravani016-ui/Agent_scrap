@@ -143,6 +143,163 @@ VENDOR_CPES: list[tuple[str, str, list[str]]] = [
     # JetStream switches — CVEs hit the controller, not the switch OS)
     ("TP-Link", "Omada Controller",
      ["cpe:2.3:a:tp-link:omada_controller"]),
+
+    # === LONG-TAIL EXPANSION (2026-05) ============================
+    # Additional vendors whose switch / NOS CPEs exist in NIST NVD.
+
+    # Cisco — extra OS lines + Meraki + Small Business
+    ("Cisco",      "IOS-XR",  ["cpe:2.3:o:cisco:ios_xr"]),
+    ("Cisco",      "Meraki MS",
+     ["cpe:2.3:o:cisco:meraki_ms_firmware",
+      "cpe:2.3:h:cisco:meraki_ms"]),
+    ("Cisco",      "Small Business",
+     ["cpe:2.3:o:cisco:small_business_switches_firmware"]),
+
+    # Juniper — EX/QFX firmware entries (some CVEs are filed against
+    # the hardware-firmware CPE rather than the Junos OS CPE)
+    ("Juniper",    "Junos Hardware",
+     ["cpe:2.3:o:juniper:ex_series_firmware",
+      "cpe:2.3:o:juniper:qfx_series_firmware"]),
+
+    # HPE FlexFabric / FlexNetwork (legacy HP ProCurve / H3C-derived)
+    ("HPE",        "Comware",
+     ["cpe:2.3:o:hp:comware",
+      "cpe:2.3:o:hp:flexfabric_5700_firmware",
+      "cpe:2.3:o:hp:flexnetwork_5130_firmware",
+      "cpe:2.3:o:hp:procurve_firmware"]),
+
+    # H3C (HPE-China switching arm) — Comware-based
+    ("H3C",        "Comware",
+     ["cpe:2.3:o:h3c:comware",
+      "cpe:2.3:o:h3c:s5560_firmware",
+      "cpe:2.3:o:h3c:s5500_firmware",
+      "cpe:2.3:o:h3c:s9800_firmware"]),
+
+    # MikroTik RouterOS (supplements the changelog fetcher with CVE data)
+    ("MikroTik",   "RouterOS",
+     ["cpe:2.3:o:mikrotik:routeros"]),
+
+    # Ubiquiti — UniFi switch / EdgeSwitch firmware
+    ("Ubiquiti",   "UniFi OS",
+     ["cpe:2.3:o:ubiquiti:unifi_os",
+      "cpe:2.3:o:ubiquitinetworks:unifi_switch_firmware",
+      "cpe:2.3:o:ubnt:airos"]),
+    ("Ubiquiti",   "EdgeSwitch",
+     ["cpe:2.3:o:ubiquiti:edgeswitch",
+      "cpe:2.3:o:ubiquitinetworks:edgeswitch_firmware"]),
+
+    # D-Link — heavy CVE volume across managed switches
+    ("D-Link",     "DGS/DXS",
+     ["cpe:2.3:o:dlink:dgs-1510-28x_firmware",
+      "cpe:2.3:o:dlink:dgs-1510-52x_firmware",
+      "cpe:2.3:o:dlink:dgs-1520-28_firmware",
+      "cpe:2.3:o:dlink:dgs-3000-28x_firmware",
+      "cpe:2.3:o:dlink:dxs-1210_firmware"]),
+
+    # Zyxel — switch firmware
+    ("Zyxel",      "Switch OS",
+     ["cpe:2.3:o:zyxel:gs1900-8_firmware",
+      "cpe:2.3:o:zyxel:gs1900-24_firmware",
+      "cpe:2.3:o:zyxel:xgs2210-28_firmware",
+      "cpe:2.3:o:zyxel:xgs2220-30_firmware",
+      "cpe:2.3:o:zyxel:nwa1123_firmware"]),
+
+    # TRENDnet — managed switch CVEs
+    ("TRENDnet",   "Smart Switch",
+     ["cpe:2.3:o:trendnet:tpe-082ws_firmware",
+      "cpe:2.3:o:trendnet:teg-082ws_firmware",
+      "cpe:2.3:o:trendnet:teg-30284_firmware"]),
+
+    # Allied Telesis — AlliedWare Plus
+    ("Allied Telesis", "AlliedWare Plus",
+     ["cpe:2.3:o:alliedtelesis:alliedware_plus",
+      "cpe:2.3:o:alliedtelesis:at-x230-18gp_firmware",
+      "cpe:2.3:o:alliedtelesis:at-x510-28gtx_firmware"]),
+
+    # Moxa — industrial switches (high CVE count via ICS-CERT)
+    ("MOXA",       "MoxaOS",
+     ["cpe:2.3:o:moxa:eds-505a_firmware",
+      "cpe:2.3:o:moxa:eds-508a_firmware",
+      "cpe:2.3:o:moxa:eds-510e_firmware",
+      "cpe:2.3:o:moxa:eds-518a_firmware",
+      "cpe:2.3:o:moxa:eds-608_firmware",
+      "cpe:2.3:o:moxa:eds-728_firmware",
+      "cpe:2.3:o:moxa:iks-g6824a_firmware",
+      "cpe:2.3:o:moxa:pt-7728_firmware",
+      "cpe:2.3:o:moxa:pt-7828_firmware",
+      "cpe:2.3:o:moxa:tn-5500a_firmware"]),
+
+    # Westermo — industrial / rugged switches
+    ("Westermo",   "WeOS",
+     ["cpe:2.3:o:westermo:weos",
+      "cpe:2.3:o:westermo:lynx_firmware",
+      "cpe:2.3:o:westermo:redfox_firmware"]),
+
+    # Hirschmann (Belden) — utility / rail industrial
+    ("Hirschmann", "Classic / HiOS",
+     ["cpe:2.3:o:hirschmann:hios",
+      "cpe:2.3:o:hirschmann:hios-2a_firmware",
+      "cpe:2.3:o:hirschmann:hios-3s_firmware",
+      "cpe:2.3:o:belden:hirschmann_eagle_firmware",
+      "cpe:2.3:o:hirschmann:rsp_firmware"]),
+
+    # Phoenix Contact — industrial managed switches
+    ("Phoenix Contact", "PROFICLOUD",
+     ["cpe:2.3:o:phoenixcontact:fl_switch_3005_firmware",
+      "cpe:2.3:o:phoenixcontact:fl_switch_3006t_firmware",
+      "cpe:2.3:o:phoenixcontact:fl_switch_2208_firmware",
+      "cpe:2.3:o:phoenixcontact:fl_switch_3008_firmware",
+      "cpe:2.3:o:phoenixcontact:fl_switch_7000_firmware"]),
+
+    # Schneider Electric — industrial ethernet
+    ("Schneider Electric", "Industrial Switch",
+     ["cpe:2.3:o:schneider-electric:connexium_firmware",
+      "cpe:2.3:o:schneider-electric:modicon_firmware"]),
+
+    # Lenovo (rebadged BNT / IBM rack switches)
+    ("Lenovo",     "Networking OS",
+     ["cpe:2.3:o:lenovo:enos",
+      "cpe:2.3:o:lenovo:cnos",
+      "cpe:2.3:o:lenovo:network_os"]),
+
+    # Sophos — XGS / Sophos Switch
+    ("Sophos",     "Sophos Switch",
+     ["cpe:2.3:o:sophos:sophos_switch_firmware"]),
+
+    # Tenda — SMB switches
+    ("Tenda",      "Switch Firmware",
+     ["cpe:2.3:o:tenda:teg1024d_firmware",
+      "cpe:2.3:o:tenda:teg1016d_firmware"]),
+
+    # Linksys (SMB managed switches — LGS line)
+    ("Linksys",    "LGS / SMB",
+     ["cpe:2.3:o:linksys:lgs308_firmware",
+      "cpe:2.3:o:linksys:lgs318_firmware",
+      "cpe:2.3:o:linksys:lgs326_firmware",
+      "cpe:2.3:o:linksys:lgs552_firmware"]),
+
+    # NEC — IP8800 / UNIVERGE switches
+    ("NEC",        "IP8800",
+     ["cpe:2.3:o:nec:ip8800_firmware",
+      "cpe:2.3:o:nec:univerge_ix_firmware"]),
+
+    # Yamaha — SWX-series enterprise switches (separate from audio biz)
+    ("Yamaha",     "SWX",
+     ["cpe:2.3:o:yamaha:swx2200-8g_firmware",
+      "cpe:2.3:o:yamaha:swx2300-8g_firmware",
+      "cpe:2.3:o:yamaha:swx3220-16mt_firmware"]),
+
+    # ZTE — ZXR10 carrier / enterprise switches
+    ("ZTE",        "ZXR10",
+     ["cpe:2.3:o:zte:zxr10",
+      "cpe:2.3:o:zte:zxr10_5950e_firmware",
+      "cpe:2.3:o:zte:zxr10_9900e_firmware"]),
+
+    # Ruijie / Reyee — China enterprise + SMB
+    ("Ruijie",     "RGOS",
+     ["cpe:2.3:o:ruijienetworks:rgos",
+      "cpe:2.3:o:ruijie:rg-s5750c_firmware",
+      "cpe:2.3:o:reyee:rg-nbs3200_firmware"]),
 ]
 
 

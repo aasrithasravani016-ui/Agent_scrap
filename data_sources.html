@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Switch Spec Agent — Overview</title>
+<style>
+  body {
+    margin: 0; background: #fff; color: #1a1a1a;
+    font: 15px/1.6 -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 36px 28px 60px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 28px 0 10px; padding-bottom: 4px; border-bottom: 1px solid #e5e5e5; }
+  .sub { color: #6a6a6a; font-size: 13px; margin-bottom: 20px; }
+  .kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin: 18px 0 6px; }
+  .kpi { border: 1px solid #e5e5e5; border-radius: 6px; padding: 10px 12px; }
+  .kpi .n { font-size: 20px; font-weight: 600; }
+  .kpi .l { color: #6a6a6a; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid #eee; text-align: left; vertical-align: top; }
+  th { background: #f7f7f7; font-weight: 600; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; }
+  .box { border: 1px solid #e5e5e5; border-radius: 6px; padding: 12px 14px; }
+  .box h3 { margin: 0 0 6px; font-size: 14px; }
+  ul { margin: 4px 0 0 18px; padding: 0; }
+  li { margin: 4px 0; }
+  .ok { color: #1f7a3a; font-weight: 600; }
+  .bad { color: #a83232; font-weight: 600; }
+  .mid { color: #a8741a; font-weight: 600; }
+  .note { color: #6a6a6a; font-size: 13px; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Switch Spec Agent</h1>
+<div class="sub">How it works · what we cover · what's blocking us</div>
+
+<div class="kpis">
+  <div class="kpi"><div class="n">134</div><div class="l">Vendors we know</div></div>
+  <div class="kpi"><div class="n">18</div><div class="l">Vendors we auto-fetch</div></div>
+  <div class="kpi"><div class="n">~237</div><div class="l">Switch models saved</div></div>
+  <div class="kpi"><div class="n">2,728</div><div class="l">Known security issues</div></div>
+</div>
+
+<h2>How it works (in simple steps)</h2>
+<p>When someone asks the agent about a switch, it tries <b>three places, in this order</b>:</p>
+<ol>
+  <li><b>Our own saved file</b> — like a notebook we already filled in. Fastest.</li>
+  <li><b>Vendor websites</b> — if the answer isn't in the notebook, the agent goes to the maker's website (Cisco, MikroTik, etc.) and reads the public product page.</li>
+  <li><b>Web search</b> — if even the vendor page doesn't have it, the agent does a normal Google-style search and reads the first good result.</li>
+</ol>
+<p>The whole thing runs at <b>zero cost</b>. No paid services, no AI charges. It just reads public web pages.</p>
+
+<h2>Which vendors we cover</h2>
+<table>
+  <thead><tr><th>Working well</th><th>Working partly</th><th>Blocked by the vendor</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="ok">MikroTik, NETGEAR, Cisco (public pages), Arista, NVIDIA, TP-Link, Lenovo, Ubiquiti</td>
+      <td class="mid">Huawei, H3C, Ruijie, Edgecore, Zyxel, Extreme, Fortinet</td>
+      <td class="bad">HPE Aruba, Dell, Juniper</td>
+    </tr>
+  </tbody>
+</table>
+<p class="note">"Blocked" means the vendor's website refuses to talk to our agent — like a bouncer at a door who only lets human visitors in.</p>
+
+<h2>What kind of data we collect</h2>
+<table>
+  <thead><tr><th>Type of data</th><th>Where it comes from</th><th>How much we have</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Switch specs (ports, speed, power…)</td>
+      <td>Vendor product pages</td>
+      <td>~237 models</td>
+    </tr>
+    <tr>
+      <td>Firmware / software versions</td>
+      <td>Public release-note pages of MikroTik, NVIDIA, Ubiquiti</td>
+      <td>127 versions</td>
+    </tr>
+    <tr>
+      <td>Known security problems (CVEs)</td>
+      <td>The free U.S. government security database (NVD)</td>
+      <td>2,728 issues across 12 vendors</td>
+    </tr>
+    <tr>
+      <td>"This one is being attacked right now" flag</td>
+      <td>The free U.S. government "actively exploited" list (CISA)</td>
+      <td>68 issues flagged</td>
+    </tr>
+  </tbody>
+</table>
+<p class="note">
+  CVE = a numbered security bug, like a license plate for vulnerabilities.
+  NVD and CISA are both free, public, government-run lists — no login, no fees.
+</p>
+
+<h2>Problems we hit, and how we solved them</h2>
+<table>
+  <thead><tr><th>The problem</th><th>What we did</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Big vendors (Aruba, Dell, Juniper) <b>block automated visitors</b> from their websites. Our agent gets turned away at the door.</td>
+      <td>We stopped trying to walk through their front door. Instead we pull the security data from the <b>free U.S. government database</b>, which lists the same issues without any login.</td>
+    </tr>
+    <tr>
+      <td>TP-Link's web pages load empty for our agent because they need a browser to "draw" the page.</td>
+      <td>We found their <b>sitemap</b> (a hidden text list of every page on their site) and read it directly. No drawing needed.</td>
+    </tr>
+    <tr>
+      <td>The popular Google-style search engine we first used started <b>refusing our requests</b> after a few tries.</td>
+      <td>We added <b>two backup search engines</b>. If the first one says no, we try the second, then the third.</td>
+    </tr>
+    <tr>
+      <td>The government security database limits us to <b>5 requests every 30 seconds</b>.</td>
+      <td>We added a small <b>wait timer</b> between requests so we never go over the limit.</td>
+    </tr>
+    <tr>
+      <td>The web app sometimes crashed when many people used it at once (database thread errors).</td>
+      <td>Changed one database setting that allows it to be used by multiple users at the same time.</td>
+    </tr>
+    <tr>
+      <td>Rebuilding the database used to <b>wipe out all our scraped data</b>.</td>
+      <td>Now we update the database in place instead of rebuilding from scratch — like editing a spreadsheet instead of deleting it and starting over.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>What we honestly cannot do</h2>
+<ul>
+  <li><b>We can't get full release notes from "members-only" websites.</b> Cisco, Aruba, Juniper, Dell, and Extreme hide the detailed update notes behind a login screen. We can only see the security issue list, not the full notes.</li>
+  <li><b>We can't read messy PDF datasheets perfectly.</b> Some vendors put their specs inside images or weird layouts. Without an AI to "read" them, we can only give the link and a few features.</li>
+  <li><b>There is no single complete list of every switch in the world.</b> We are stitching together many sources. Some vendors and old models will always be missing.</li>
+  <li><b>Some Chinese vendors</b> (Huawei, H3C, Ruijie) put much more detail on their Chinese pages than their English pages. We only read the English ones.</li>
+</ul>
+
+<h2>What's still missing / what to do next</h2>
+<div class="row">
+  <div class="box">
+    <h3>Coverage gaps</h3>
+    <ul>
+      <li>No firmware data yet for Cisco, Juniper, Arista, Aruba — only security issues.</li>
+      <li>About <b>115 vendors</b> we know about have <b>no auto-fetch</b> set up yet (mostly small / industrial / niche brands).</li>
+      <li>Huawei, H3C, Ruijie data is thin.</li>
+    </ul>
+  </div>
+  <div class="box">
+    <h3>Quality gaps</h3>
+    <ul>
+      <li>Many saved switches only have a link to the datasheet, not all the numbers.</li>
+      <li>No "end-of-life" / "end-of-support" dates yet.</li>
+      <li>Nothing runs on a schedule — we re-fetch by hand.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="sub" style="margin-top:28px">
+  Project folder: <span style="font-family:monospace">/Users/aasritha/agent/switch-spec-agent</span> · 2026-05-20
+</div>
+
+</div>
+</body>
+</html>

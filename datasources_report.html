@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Switch Spec Agent — Data Sources Report</title>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --muted: #5c5c5c;
+    --line: #e5e5e5;
+    --soft: #f7f7f7;
+    --ok: #1f7a3a;
+    --warn: #a8741a;
+    --bad: #a83232;
+    --accent: #2b5fb5;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #ffffff;
+    color: var(--ink);
+    font: 15px/1.55 -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 40px 28px 80px; }
+  header { border-bottom: 1px solid var(--line); padding-bottom: 20px; margin-bottom: 28px; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  h2 { font-size: 19px; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 16px; margin: 22px 0 8px; }
+  .sub { color: var(--muted); font-size: 14px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 20px 0 8px; }
+  .kpi { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+  .kpi .n { font-size: 22px; font-weight: 600; }
+  .kpi .l { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--soft); font-weight: 600; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+  .b-ok { background: #e8f4ec; color: var(--ok); }
+  .b-warn { background: #fbf1df; color: var(--warn); }
+  .b-bad { background: #fbe6e6; color: var(--bad); }
+  .b-info { background: #e8eef9; color: var(--accent); }
+  code { background: var(--soft); padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin: 10px 0; background: #fff; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  ul.tight { margin: 6px 0 10px 20px; padding: 0; }
+  ul.tight li { margin: 3px 0; }
+  .issue { border-left: 3px solid var(--bad); padding: 8px 12px; background: #fff8f8; margin: 10px 0; border-radius: 4px; }
+  .fix { border-left: 3px solid var(--ok); padding: 8px 12px; background: #f6fbf7; margin: 10px 0; border-radius: 4px; }
+  .label { font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  footer { margin-top: 50px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Switch Spec Agent — Data Sources Report</h1>
+  <div class="sub">Project: <code>/Users/aasritha/agent/switch-spec-agent</code> · Generated 2026-05-20</div>
+</header>
+
+<p>
+  This is a plain-English summary of where the agent gets its data from, how it
+  is doing right now, the problems we hit, and the workarounds we put in
+  place. The agent answers two kinds of questions: <b>switch specifications</b>
+  (ports, speed, power, etc.) and <b>firmware / security advisories</b> (which
+  release fixes which CVE).
+</p>
+
+<div class="kpi-row">
+  <div class="kpi"><div class="n">134</div><div class="l">Vendors known (vendors.json)</div></div>
+  <div class="kpi"><div class="n">18</div><div class="l">Spec scrapers active</div></div>
+  <div class="kpi"><div class="n">3</div><div class="l">Firmware fetchers</div></div>
+  <div class="kpi"><div class="n">2,729</div><div class="l">CVEs in DB</div></div>
+</div>
+
+
+<h2>1. The Big Picture</h2>
+
+<div class="card">
+  <p style="margin-top:0">
+    The agent has <b>three layers</b> of data sources. We always try the
+    cheapest one first:
+  </p>
+  <ol>
+    <li><span class="label">Layer 1 — Vendor registry</span> A static list of 134 vendors in <code>vendors.json</code>. Used for "do you know vendor X?" and for aliases (e.g. "Aruba" ↔ "HPE Aruba Networking").</li>
+    <li><span class="label">Layer 2 — Local SQLite DB</span> <code>data/switches.db</code> with three tables: <code>switches</code> (specs), <code>firmware_versions</code> (release notes), <code>security_advisories</code> (CVEs).</li>
+    <li><span class="label">Layer 3 — Live web fallback</span> If a model is not in the DB, <code>live_extract.py</code> searches the web (Startpage → Mojeek → DuckDuckGo) and parses the official datasheet on the fly.</li>
+  </ol>
+  <p style="margin-bottom:0">Everything runs at <b>$0</b>: no paid APIs, no LLM. Just HTML/PDF parsing.</p>
+</div>
+
+
+<h2>2. Data Sources for Switch Specs</h2>
+
+<p>Each vendor has a dedicated scraper in <code>scrapers/</code>. The orchestrator (<code>run_scrapers.py</code>) crawls the vendor's public product pages, parses the HTML/PDF datasheet, and writes rows into the <code>switches</code> table.</p>
+
+<table>
+  <thead>
+    <tr><th>Vendor</th><th>Source URL</th><th>Status</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>MikroTik</td><td><code>mikrotik.com</code></td><td><span class="badge b-ok">Working</span></td><td>Clean HTML, no blocking.</td></tr>
+    <tr><td>NETGEAR</td><td><code>netgear.com</code></td><td><span class="badge b-ok">Working</span></td><td>Per-model pages.</td></tr>
+    <tr><td>Cisco</td><td><code>cisco.com</code></td><td><span class="badge b-ok">Working</span></td><td>Public product pages.</td></tr>
+    <tr><td>NVIDIA</td><td><code>nvidia.com</code></td><td><span class="badge b-ok">Working</span></td><td>Spectrum / Cumulus pages.</td></tr>
+    <tr><td>Arista</td><td><code>arista.com</code></td><td><span class="badge b-ok">Working</span></td><td>7050X3, 7060X, 7280R3, 7300X, 7500R, 7800R series, etc.</td></tr>
+    <tr><td>Ubiquiti</td><td><code>store.ui.com</code>, <code>techspecs.ui.com</code></td><td><span class="badge b-warn">Thin</span></td><td>Specs page light; firmware data much richer.</td></tr>
+    <tr><td>TP-Link</td><td><code>tp-link.com</code> sitemap</td><td><span class="badge b-ok">Fixed</span></td><td>Was JS-rendered → now use sitemap.xml.</td></tr>
+    <tr><td>HPE Aruba</td><td><code>arubanetworks.com</code></td><td><span class="badge b-bad">Blocked</span></td><td>Akamai 403 even with browser headers.</td></tr>
+    <tr><td>Dell</td><td><code>dell.com</code></td><td><span class="badge b-bad">Blocked</span></td><td>403 on robots.txt.</td></tr>
+    <tr><td>Juniper</td><td><code>juniper.net</code></td><td><span class="badge b-bad">Blocked</span></td><td>301 → buy.hpe.com → 403.</td></tr>
+    <tr><td>Fortinet</td><td><code>fortinet.com</code></td><td><span class="badge b-warn">Partial</span></td><td>Pages load but specs hidden behind interactivity.</td></tr>
+    <tr><td>Extreme Networks</td><td><code>extremenetworks.com</code></td><td><span class="badge b-warn">Partial</span></td><td>Login-gated for full datasheets.</td></tr>
+    <tr><td>Huawei</td><td><code>e.huawei.com</code></td><td><span class="badge b-warn">Partial</span></td><td>CE12800/16800, S5700/5731/6730/7700, etc.</td></tr>
+    <tr><td>H3C</td><td><code>h3c.com</code></td><td><span class="badge b-warn">Partial</span></td><td>Region-specific content.</td></tr>
+    <tr><td>Ruijie</td><td><code>ruijienetworks.com</code></td><td><span class="badge b-warn">Partial</span></td><td>Limited English pages.</td></tr>
+    <tr><td>Edgecore</td><td><code>edge-core.com</code></td><td><span class="badge b-warn">Partial</span></td><td>Datasheet links only.</td></tr>
+    <tr><td>Zyxel</td><td><code>zyxel.com</code></td><td><span class="badge b-warn">Partial</span></td><td>SMB switches.</td></tr>
+    <tr><td>Lenovo</td><td><code>lenovopress.lenovo.com</code></td><td><span class="badge b-ok">Working</span></td><td>ThinkSystem NE-series datasheets in HTML.</td></tr>
+  </tbody>
+</table>
+
+<p class="sub">Every page we successfully fetch is also stored on disk under <code>data_cache/&lt;vendor&gt;/</code> so repeat runs are free and offline-friendly.</p>
+
+
+<h2>3. Data Sources for Firmware Releases</h2>
+
+<p>Firmware fetchers live in <code>firmware_fetchers.py</code>. Only vendors with a <b>public, no-login changelog</b> are scraped directly. Run with <code>python3 fetch_firmware.py &lt;vendor&gt;</code>.</p>
+
+<table>
+  <thead>
+    <tr><th>Vendor / NOS</th><th>Source</th><th>Versions in DB</th><th>How it works</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>MikroTik RouterOS</td>
+      <td><code>upgrade.mikrotik.com/routeros</code></td>
+      <td class="num">15</td>
+      <td>Plain-text channel heads + per-version <code>CHANGELOG</code> files.</td>
+    </tr>
+    <tr>
+      <td>NVIDIA Cumulus Linux</td>
+      <td><code>docs.nvidia.com</code> + GitHub</td>
+      <td class="num">51</td>
+      <td>Release notes pages.</td>
+    </tr>
+    <tr>
+      <td>Ubiquiti UniFi OS</td>
+      <td><code>fw-update.ui.com/api/firmware</code> + <code>community.ui.com/releases</code></td>
+      <td class="num">61</td>
+      <td>JSON API + forum release feed.</td>
+    </tr>
+    <tr>
+      <td>Sophos, Tenda, Westermo</td>
+      <td>(seeded)</td>
+      <td class="num">1 each</td>
+      <td>Manually added test rows.</td>
+    </tr>
+  </tbody>
+</table>
+
+
+<h2>4. Data Sources for Security Advisories (CVEs)</h2>
+
+<p>
+  For login-gated vendors (Cisco, Juniper, Aruba, Arista, Dell, Fortinet) we
+  <b>cannot</b> reach the changelog. We side-step the wall by pulling the same
+  data from <b>NIST NVD</b> — the U.S. government's free, no-auth CVE database.
+  Then we overlay <b>CISA KEV</b> to flag which CVEs are being actively
+  exploited in the wild.
+</p>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="label">Primary CVE source</div>
+    <h3 style="margin-top:6px">NIST NVD</h3>
+    <code>services.nvd.nist.gov/rest/json/cves/2.0</code>
+    <ul class="tight">
+      <li>No auth required.</li>
+      <li>Rate-limited: 5 req / 30s → fetcher sleeps 6.5s.</li>
+      <li>Query by CPE (vendor + product code).</li>
+      <li>Run: <code>python3 fetch_firmware.py nvd</code></li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="label">"Actively exploited" overlay</div>
+    <h3 style="margin-top:6px">CISA KEV catalog</h3>
+    <code>cisa.gov/.../known_exploited_vulnerabilities.json</code>
+    <ul class="tight">
+      <li>Free public JSON feed.</li>
+      <li>Flips <code>actively_exploited=1</code> on matching CVEs.</li>
+      <li>Run: <code>python3 fetch_firmware.py kev</code></li>
+    </ul>
+  </div>
+</div>
+
+<h3>Current CVE coverage in <code>security_advisories</code></h3>
+<table>
+  <thead><tr><th>Vendor</th><th class="num">CVEs</th><th class="num">Actively exploited (KEV)</th></tr></thead>
+  <tbody>
+    <tr><td>Cisco</td><td class="num">1,129</td><td class="num">41</td></tr>
+    <tr><td>Juniper</td><td class="num">858</td><td class="num">7</td></tr>
+    <tr><td>Fortinet</td><td class="num">276</td><td class="num">18</td></tr>
+    <tr><td>HPE Aruba</td><td class="num">239</td><td class="num">0</td></tr>
+    <tr><td>Huawei</td><td class="num">79</td><td class="num">0</td></tr>
+    <tr><td>Arista</td><td class="num">44</td><td class="num">2</td></tr>
+    <tr><td>Dell</td><td class="num">42</td><td class="num">0</td></tr>
+    <tr><td>Netgear</td><td class="num">30</td><td class="num">0</td></tr>
+    <tr><td>Extreme Networks</td><td class="num">12</td><td class="num">0</td></tr>
+    <tr><td>Brocade</td><td class="num">8</td><td class="num">0</td></tr>
+    <tr><td>NVIDIA</td><td class="num">8</td><td class="num">0</td></tr>
+    <tr><td>TP-Link</td><td class="num">3</td><td class="num">0</td></tr>
+    <tr><th>Total</th><th class="num">2,728</th><th class="num">68</th></tr>
+  </tbody>
+</table>
+
+
+<h2>5. How It Is Doing</h2>
+
+<div class="card">
+  <ul class="tight">
+    <li><b>Speed:</b> answering DB-cached questions in ~1 ms (target was &lt;10 s).</li>
+    <li><b>Coverage:</b> 134 vendors recognised; 18 scrapers wired up; ~237 switch models scraped.</li>
+    <li><b>Firmware:</b> 130 firmware versions across 3 active fetchers (MikroTik, NVIDIA, Ubiquiti).</li>
+    <li><b>Security:</b> 2,728 CVEs loaded, 68 flagged as actively exploited.</li>
+    <li><b>UI:</b> 5-tab Streamlit app (<code>app.py</code>) + CLI (<code>cli.py</code>) — all working.</li>
+    <li><b>Tests:</b> 81 pytest + 34 smoke + 19 fast-path tests all passing.</li>
+  </ul>
+</div>
+
+
+<h2>6. Issues We Faced &amp; What We Did</h2>
+
+<div class="issue">
+  <b>Issue 1 — Big enterprise vendors block scrapers (Aruba, Dell, Juniper).</b>
+  Their sites are behind Akamai or other bot-protection. Even with browser
+  User-Agent headers we get <code>403</code> / <code>406</code>. No amount of
+  code-fixing will work — they actively don't want robots.
+</div>
+<div class="fix">
+  <b>What we did:</b> Stopped trying to scrape their HTML. For specs they fall
+  back to the live web search. For firmware/CVEs we go through <b>NIST NVD</b>
+  instead, which gives us structured affected/fixed version ranges and CVSS
+  scores. The old "login portal" dead-end message was removed.
+</div>
+
+<div class="issue">
+  <b>Issue 2 — TP-Link product pages are JavaScript-rendered.</b>
+  A plain HTTP fetch got an empty shell with no specs.
+</div>
+<div class="fix">
+  <b>What we did:</b> Switched the TP-Link scraper to read
+  <code>tp-link.com/us/sitemap.xml</code> for the model list, then fetch each
+  static product page directly. No headless browser needed.
+</div>
+
+<div class="issue">
+  <b>Issue 3 — DuckDuckGo search returns 202 (rate-limited / blocked).</b>
+  Originally the live fallback relied on DDG.
+</div>
+<div class="fix">
+  <b>What we did:</b> Made <code>live_search.py</code> try
+  <b>Startpage → Mojeek → DDG</b> in order. DDG is now only a last resort and
+  not relied on.
+</div>
+
+<div class="issue">
+  <b>Issue 4 — No LLM means messy vendor PDFs can't be parsed into full
+  specs.</b> Some datasheets have specs in image tables or weird layouts.
+</div>
+<div class="fix">
+  <b>What we did:</b> Degrade gracefully — return the official datasheet URL,
+  product image, and any features we <i>could</i> extract, rather than failing.
+  Honest "not in KB" answers instead of fake numbers.
+</div>
+
+<div class="issue">
+  <b>Issue 5 — NIST NVD rate limit is strict (5 requests per 30 seconds
+  unauthenticated).</b> Naive paging gets <code>429</code>.
+</div>
+<div class="fix">
+  <b>What we did:</b> The NVD fetcher sleeps <b>6.5 s</b> between pages and
+  supports <code>--nvd-vendor cisco</code> for incremental top-ups instead of
+  full re-pulls.
+</div>
+
+<div class="issue">
+  <b>Issue 6 — Streamlit reruns on different threads, but SQLite hates
+  cross-thread connections.</b> Caused random "database is locked" / thread
+  errors in the UI.
+</div>
+<div class="fix">
+  <b>What we did:</b> Open the SQLite connection with
+  <code>check_same_thread=False</code> and cache the agent via
+  <code>@st.cache_resource</code>.
+</div>
+
+<div class="issue">
+  <b>Issue 7 — Many CVEs are theoretical and noisy.</b> 2,700+ rows is too
+  much for an operator to triage.
+</div>
+<div class="fix">
+  <b>What we did:</b> Layered the CISA KEV "known exploited" flag on top, so
+  the UI can show the ~68 CVEs that are actually being weaponized in the wild
+  first.
+</div>
+
+<div class="issue">
+  <b>Issue 8 — DB used to get wiped when re-built from seed.</b> A
+  <code>build_db.py</code> rebuild deleted the ~237 scraped models.
+</div>
+<div class="fix">
+  <b>What we did:</b> Switched to <b>in-place migration</b>
+  (<code>ALTER TABLE</code> for new columns, <code>CREATE TABLE IF NOT EXISTS</code>
+  for new tables). Rebuilds from seed are now opt-in only.
+</div>
+
+
+<h2>7. Quick Reference — Commands</h2>
+<table>
+  <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td><code>python3 build_db.py</code></td><td>Build the SQLite DB from <code>seed_data.json</code> (only if missing).</td></tr>
+    <tr><td><code>python3 run_scrapers.py</code></td><td>Run all vendor spec scrapers.</td></tr>
+    <tr><td><code>python3 fetch_firmware.py</code></td><td>Run all firmware fetchers (MikroTik + NVIDIA + Ubiquiti).</td></tr>
+    <tr><td><code>python3 fetch_firmware.py nvd</code></td><td>Pull CVE data from NIST NVD into <code>security_advisories</code>.</td></tr>
+    <tr><td><code>python3 fetch_firmware.py kev</code></td><td>Overlay CISA's "actively exploited" flag.</td></tr>
+    <tr><td><code>python3 cli.py "Cisco Catalyst 9300"</code></td><td>Ask the agent about a model.</td></tr>
+    <tr><td><code>python3 -m streamlit run app.py</code></td><td>Launch the web UI (5 tabs).</td></tr>
+  </tbody>
+</table>
+
+
+<footer>
+  Report generated from a live read of <code>/Users/aasritha/agent/switch-spec-agent/</code>
+  on 2026-05-20. All counts are taken directly from
+  <code>data/switches.db</code>.
+</footer>
+
+</div>
+</body>
+</html>

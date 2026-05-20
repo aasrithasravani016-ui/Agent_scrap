@@ -66,6 +66,104 @@ def render(agent: SpecAgent, resp: dict) -> None:
               f"{r.get('port_config', '') or '—':<26} {sc}")
 
 
+def _run_bulk_firmware(agent, input_csv: str, output_csv: str = None) -> None:
+    """Read a CSV (cols: model, version) and write one row per fleet member
+    through the firmware advisor. Useful for fleet-wide upgrade planning."""
+    import csv
+    import sys
+    from pathlib import Path
+
+    src = Path(input_csv)
+    if not src.exists():
+        print(f"Error: {input_csv} not found", file=sys.stderr)
+        sys.exit(2)
+
+    rows_in = []
+    with src.open(newline="", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        for line in reader:
+            if not line or not line[0].strip():
+                continue
+            # Skip header if first cell looks like a label
+            if line[0].lower() in ("model", "switch", "switch_model"):
+                continue
+            model = line[0].strip()
+            version = line[1].strip() if len(line) > 1 else ""
+            rows_in.append((model, version))
+
+    if not rows_in:
+        print(f"Error: no rows found in {input_csv}", file=sys.stderr)
+        sys.exit(2)
+
+    out_fh = open(output_csv, "w", newline="", encoding="utf-8") \
+        if output_csv else sys.stdout
+    try:
+        writer = csv.writer(out_fh)
+        writer.writerow([
+            "model", "current_version", "vendor", "nos", "has_data",
+            "latest_version", "releases_behind",
+            "critical", "high", "medium", "low",
+            "earliest_fix", "release_notes_url", "message",
+        ])
+
+        print(f"# Processing {len(rows_in)} switches...",
+              file=sys.stderr)
+        for i, (model, version) in enumerate(rows_in, 1):
+            print(f"  [{i}/{len(rows_in)}] {model!r} v{version!r}",
+                  file=sys.stderr)
+            adv = agent.firmware_advise(model, version) if version \
+                else _wrap_latest_only(agent, model)
+
+            latest = ""
+            behind = ""
+            crit = high = med = low = 0
+            earliest = ""
+            notes = ""
+            if getattr(adv, "diff", None):
+                latest = adv.diff.target.version
+                behind = adv.diff.releases_behind
+                notes = adv.diff.target.release_notes_url or ""
+            advisories = getattr(adv, "advisories", None) or []
+            for a in advisories:
+                sev = (a.severity or "").upper()
+                if   sev == "CRITICAL": crit += 1
+                elif sev == "HIGH":     high += 1
+                elif sev == "MEDIUM":   med  += 1
+                elif sev == "LOW":      low  += 1
+            if getattr(adv, "recommended_min_version", None):
+                earliest = adv.recommended_min_version
+
+            writer.writerow([
+                model, version, adv.vendor or "",
+                adv.nos or "", adv.has_data,
+                latest, behind, crit, high, med, low,
+                earliest, notes, (adv.message or "")[:300],
+            ])
+    finally:
+        if output_csv:
+            out_fh.close()
+            print(f"\nWrote {output_csv}", file=sys.stderr)
+
+
+def _wrap_latest_only(agent, model: str):
+    """Adapter so bulk mode can also handle rows without a version
+    (uses the latest-firmware helper instead of the diff path)."""
+    from firmware import FirmwareAdvice
+    info = agent.latest_firmware(model)
+    if info.get("status") == "ok":
+        return FirmwareAdvice(
+            vendor=info["vendor"], nos=info["nos"],
+            current_version="", has_data=True,
+            message=f"Latest known: v{info['version']}"
+                    + (f", released {info['release_date']}" if info.get("release_date") else ""),
+        )
+    return FirmwareAdvice(
+        vendor=info.get("vendor", "Unknown"), nos=info.get("nos"),
+        current_version="", has_data=False,
+        message=info.get("message", "No information available."),
+    )
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description="Switch specification lookup agent")
     p.add_argument("query", nargs="*", help="Natural language query")
@@ -87,6 +185,12 @@ def main() -> None:
     p.add_argument("--firmware", nargs=2, metavar=("MODEL", "VERSION"),
                    help="Firmware advice: what changed since the given "
                         "version for this model")
+    p.add_argument("--bulk-firmware", metavar="INPUT.CSV",
+                   help="Run the firmware advisor over a fleet (CSV with "
+                        "columns: model,version). Writes summary CSV to "
+                        "stdout or to --out.")
+    p.add_argument("--out", metavar="OUTPUT.CSV",
+                   help="Output file for --bulk-firmware (default stdout).")
     p.add_argument("-v", "--verbose", action="store_true",
                    help="Enable debug logging (live fallback, scrapers)")
     args = p.parse_args()
@@ -108,6 +212,10 @@ def main() -> None:
         advice = agent.firmware_advise(model, version)
         print(format_advice(advice))
         print(f"\n[{(time.time() - t0) * 1000:.0f} ms]")
+        return
+
+    if args.bulk_firmware:
+        _run_bulk_firmware(agent, args.bulk_firmware, args.out)
         return
 
     if args.vendors:
