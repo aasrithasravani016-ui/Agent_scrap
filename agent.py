@@ -408,6 +408,15 @@ class SpecAgent:
                 reverse=True,
             )
         top = ranked[0]
+        # Auto-enrich thin cached rows: if the local hit has almost no
+        # data, kick off a live web fetch and merge in whatever new
+        # fields it finds (never overwriting existing values). Caches
+        # the enriched row so the next query is instant + complete.
+        if self.live and self._is_sparse(top):
+            enriched = self._enrich_from_web(query, top)
+            if enriched:
+                top = enriched
+
         conf = "high" if (tokens and self._token_in_record(top, tokens)) \
             else "medium" if not tokens else "low"
         alts = [{"vendor": r["vendor"], "model": r["model"]}
@@ -415,6 +424,89 @@ class SpecAgent:
         return {"type": "spec",
                 "message": f"Best match ({conf} confidence):",
                 "result": top, "confidence": conf, "alternates": alts}
+
+    # ---- Auto-enrichment of sparse cached rows ----
+
+    _USEFUL_FIELDS = (
+        "port_count", "port_config", "port_speed_max_gbps",
+        "switching_capacity_gbps", "forwarding_rate_mpps", "buffer_mb",
+        "layer", "poe_standard", "poe_budget_w", "rack_units", "nos",
+        "use_case",
+    )
+
+    def _is_sparse(self, rec: dict) -> bool:
+        """A row is 'sparse' if it has <2 useful fields and <3 features
+        and no extra_specs — i.e. the UI would show almost nothing."""
+        useful = sum(1 for k in self._USEFUL_FIELDS
+                     if rec.get(k) not in (None, "", 0))
+        feats = len(rec.get("features") or [])
+        extras = len(rec.get("extra_specs") or {}) \
+            if isinstance(rec.get("extra_specs"), dict) else 0
+        return useful < 2 and feats < 3 and extras == 0
+
+    def _enrich_from_web(self, query: str, top: dict) -> Optional[dict]:
+        """Run a live lookup and fill in any field that's empty in the
+        local row. Never overwrites existing values. Persists the result."""
+        try:
+            from dataclasses import asdict
+            from live_extract import live_lookup
+            rec = live_lookup(query, deadline_sec=8.0, persist=False)
+        except Exception as e:
+            logger.warning("auto-enrich live lookup failed: %s", e)
+            return None
+        if rec is None:
+            return None
+
+        live = {k: v for k, v in asdict(rec).items()
+                if v not in (None, "", [], {})}
+        merged = dict(top)
+        added = 0
+        for k, v in live.items():
+            if k in ("vendor", "model"):
+                continue  # never rename the cached identity
+            if merged.get(k) in (None, "", [], 0) or (
+                k == "extra_specs" and not merged.get(k)
+            ):
+                merged[k] = v
+                added += 1
+        if added == 0:
+            return None
+        # Persist the merged row back, then re-read so the UI sees the
+        # exact same value the DB now holds.
+        try:
+            self._persist_enriched(merged)
+        except Exception as e:
+            logger.warning("auto-enrich persist failed: %s", e)
+        logger.info("Auto-enriched %s/%s — added %d fields",
+                    merged.get("vendor"), merged.get("model"), added)
+        return merged
+
+    def _persist_enriched(self, merged: dict) -> None:
+        """Write the enriched row back to the switches table."""
+        cols = [r[1] for r in self.con.execute("PRAGMA table_info(switches)")]
+        d = {}
+        for c in cols:
+            if c in ("id", "last_updated"):
+                continue
+            if c not in merged:
+                continue
+            v = merged[c]
+            if c in ("features",) and isinstance(v, list):
+                v = json.dumps(v) if v else None
+            elif c == "extra_specs" and isinstance(v, dict):
+                v = json.dumps(v) if v else None
+            d[c] = v
+        if not d:
+            return
+        # UPDATE existing row keyed on (vendor, model).
+        sets = ",".join(f"{k}=?" for k in d
+                        if k not in ("vendor", "model"))
+        vals = [v for k, v in d.items() if k not in ("vendor", "model")]
+        self.con.execute(
+            f"UPDATE switches SET {sets} WHERE vendor=? AND model=?",
+            vals + [d.get("vendor"), d.get("model")],
+        )
+        self.con.commit()
 
     def _notfound(self, query: str, vendor: Optional[str]) -> dict:
         # Live web fallback: not in the local DB -> search the web for

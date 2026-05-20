@@ -304,6 +304,8 @@ def _build_summary(top: dict) -> str:
         parts.append(f"{pc} × {ms}G" if ms else f"{pc}-port")
     if top.get("use_case"):
         parts.append(top["use_case"])
+    if not parts:  # nothing to anchor "switch" to — skip the lonely word
+        return ""
     parts.append("switch")
     if top.get("layer"):
         parts.append(top["layer"])
