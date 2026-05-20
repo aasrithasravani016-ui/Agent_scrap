@@ -603,19 +603,29 @@ def advise(
 
     if gated:
         portal = LOGIN_GATED_VENDORS[vendor]
+        def _sev_breakdown(items):
+            counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0,
+                      "NONE": 0}
+            for a in items:
+                key = (a.severity or "").upper() or "NONE"
+                counts[key] = counts.get(key, 0) + 1
+            order = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE"]
+            return " · ".join(
+                f"{n} {k}" for k in order
+                for n in (counts.get(k, 0),) if n
+            )
+
         if advisories:
+            breakdown = _sev_breakdown(advisories)
             msg = (
-                f"Found {len(advisories)} published CVE(s) affecting "
-                f"{vendor} {nos} {current_version}. Full release notes for "
-                f"this NOS require a vendor login (see portal link), but "
-                f"the security-advisory data below is from NIST NVD and "
-                f"is up-to-date."
+                f"{len(advisories)} CVE(s) affecting {vendor} {nos} "
+                f"{current_version} — {breakdown}. Full release notes "
+                f"require a vendor login, but the CVE data below is from "
+                f"NIST NVD and is up to date."
             )
         else:
-            # No CVEs match this version — could mean the version string
-            # doesn't match NVD's CPE format, or the version is unaffected,
-            # or we haven't ingested NVD yet.
-            n_total = len(list_advisories(vendor, nos, db_path=db_path))
+            all_for_nos = list_advisories(vendor, nos, db_path=db_path)
+            n_total = len(all_for_nos)
             if n_total == 0:
                 msg = (
                     f"No security-advisory data cached for {vendor} {nos}. "
@@ -624,12 +634,13 @@ def advise(
                     f"NIST NVD (free, no login)."
                 )
             else:
+                breakdown = _sev_breakdown(all_for_nos)
                 msg = (
-                    f"{n_total} CVE(s) are known for {vendor} {nos}, but "
-                    f"none match firmware version {current_version}. Either "
-                    f"the version is unaffected or the version string is "
-                    f"not in the NVD-recognized format. Full release notes "
-                    f"require a vendor login."
+                    f"{n_total} CVE(s) known for {vendor} {nos} overall "
+                    f"({breakdown}); none of them match firmware version "
+                    f"{current_version}. Either this version is unaffected "
+                    f"or the version string isn't in the NVD-recognized "
+                    f"format. Full release notes require a vendor login."
                 )
         return FirmwareAdvice(
             vendor=vendor, nos=nos,

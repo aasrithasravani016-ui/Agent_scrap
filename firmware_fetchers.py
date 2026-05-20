@@ -200,40 +200,131 @@ class MikroTikFirmwareFetcher(BaseFirmwareFetcher):
 # ---------------------------------------------------------------------------
 class CumulusFirmwareFetcher(BaseFirmwareFetcher):
     """
-    NVIDIA publishes Cumulus release notes at:
-      https://docs.nvidia.com/networking-ethernet-software/cumulus-linux-X.Y/Whats-New/
-    Plus GitHub for SONiC integration.
+    NVIDIA Cumulus Linux release notes — enumerated from the Hugo docs.
+
+    Every reachable `cumulus-linux-NNN/Whats-New/` page is fetched (4.0–4.4
+    and 5.0–5.16 at time of writing). Each page typically holds multiple
+    minor versions under `<h2>` headers like
+        "What's New in Cumulus Linux 5.10.1"
+    with `<h3>` subsections "New Features and Enhancements" / "Resolved
+    Issues" / "Open Issues" / "Removed Features". Each version becomes one
+    FirmwareRecord with the bullets routed into the right field.
     """
     VENDOR = "NVIDIA"
     NOS = "Cumulus Linux"
-    NOTES_INDEX = "https://docs.nvidia.com/networking-ethernet-software/"
+    BASE = "https://docs.nvidia.com/networking-ethernet-software"
+
+    # Candidate slugs to probe. Generous superset — non-existent ones 404
+    # and are silently skipped.
+    CANDIDATE_SLUGS = (
+        [f"4{m}" for m in range(0, 10)] +
+        [f"5{m}" for m in range(0, 10)] +
+        [f"5{m:02d}" for m in range(10, 20)]
+    )
+
+    HDR_RE = re.compile(
+        r"What.{1,3}s New in Cumulus Linux\s+(\d+\.\d+(?:\.\d+)?)",
+        re.IGNORECASE,
+    )
+    SECTION_MAP = (
+        ("new feature",      "new_features"),
+        ("enhancement",      "new_features"),
+        ("resolved issue",   "bug_fixes"),
+        ("fixed",            "bug_fixes"),
+        ("open issue",       "known_issues"),
+        ("known issue",      "known_issues"),
+        ("removed",          "deprecations"),
+        ("deprecat",         "deprecations"),
+    )
 
     def fetch(self) -> Iterator[FirmwareRecord]:
-        # NVIDIA's docs are a JS-nav Hugo site: only the current version
-        # slug appears in static HTML, and there are no machine-readable
-        # release notes. Honest behaviour: record the discoverable
-        # version(s) as a *pointer* to the official notes — no fabricated
-        # changelog content.
-        text = self.http.get_text(self.NOTES_INDEX)
-        if not text:
-            logger.info("Cumulus docs page unreachable - skipping")
-            return
+        from bs4 import BeautifulSoup
+        seen_versions: set[str] = set()
+        latest_ver: Optional[str] = None
 
-        # Slugs look like cumulus-linux-516 (=5.16), -510 (=5.10), -57 (=5.7)
-        slugs = set(re.findall(r"cumulus-linux-(\d{2,3})/", text))
-        for slug in slugs:
-            ver = f"{slug[0]}.{int(slug[1:])}" if len(slug) > 1 else slug
-            yield FirmwareRecord(
-                vendor=self.VENDOR,
-                nos=self.NOS,
-                version=ver,
-                train="stable",
-                is_recommended=True,
-                release_notes_url=(
-                    f"https://docs.nvidia.com/networking-ethernet-software/"
-                    f"cumulus-linux-{slug}/Whats-New/"
-                ),
-            )
+        for slug in self.CANDIDATE_SLUGS:
+            url = f"{self.BASE}/cumulus-linux-{slug}/Whats-New/"
+            html = self.http.get_text(url)
+            if not html:
+                continue
+            soup = BeautifulSoup(html, "html.parser")
+            for ver, sections in self._parse_page(soup):
+                if ver in seen_versions:
+                    continue
+                seen_versions.add(ver)
+                if latest_ver is None or parse_version(ver) and \
+                        parse_version(latest_ver) and \
+                        parse_version(ver) > parse_version(latest_ver):
+                    latest_ver = ver
+                yield FirmwareRecord(
+                    vendor=self.VENDOR,
+                    nos=self.NOS,
+                    version=ver,
+                    new_features=sections.get("new_features", []),
+                    bug_fixes=sections.get("bug_fixes", []),
+                    known_issues=sections.get("known_issues", []),
+                    deprecations=sections.get("deprecations", []),
+                    release_notes_url=url,
+                )
+        # Mark the highest known version as the recommended stable.
+        # (We don't get release dates from these pages — Hugo doesn't
+        # expose them — so the diff will show "N releases behind" by
+        # version-compare alone.)
+        if latest_ver:
+            logger.info("[Cumulus] highest known: %s", latest_ver)
+
+    @classmethod
+    def _parse_page(cls, soup) -> Iterator[tuple[str, dict[str, list[str]]]]:
+        """Walk h2 'What's New in Cumulus Linux X.Y.Z' headers. For each,
+        collect everything until the next such header, then split that
+        block by h3 section headings."""
+        h2s = soup.find_all("h2")
+        for i, h2 in enumerate(h2s):
+            m = cls.HDR_RE.search(h2.get_text(" ", strip=True))
+            if not m:
+                continue
+            ver = m.group(1)
+            # Collect siblings up to the next matching h2.
+            block = []
+            for sib in h2.find_all_next():
+                if sib.name == "h2" and cls.HDR_RE.search(
+                        sib.get_text(" ", strip=True)):
+                    break
+                block.append(sib)
+            sections = cls._split_sections(block)
+            yield ver, sections
+
+    @classmethod
+    def _split_sections(cls, block) -> dict[str, list[str]]:
+        """Within one version's block, group bullet content by h3 section
+        title — mapping each title into our schema field."""
+        out: dict[str, list[str]] = {}
+        current_field: Optional[str] = None
+        for el in block:
+            name = getattr(el, "name", None)
+            if name in ("h3", "h4"):
+                title = el.get_text(" ", strip=True).lower()
+                current_field = None
+                for needle, field_name in cls.SECTION_MAP:
+                    if needle in title:
+                        current_field = field_name
+                        break
+                continue
+            if current_field is None:
+                continue
+            # Pull bullet lines: prefer <li>, else split paragraphs on newline.
+            if name in ("ul", "ol"):
+                items = [li.get_text(" ", strip=True)
+                         for li in el.find_all("li", recursive=False)]
+            elif name in ("p", "div"):
+                text = el.get_text(" ", strip=True)
+                items = [text] if text and len(text) > 3 else []
+            else:
+                continue
+            for it in items:
+                if 5 < len(it) < 400:
+                    out.setdefault(current_field, []).append(it)
+        return out
 
 
 # ---------------------------------------------------------------------------

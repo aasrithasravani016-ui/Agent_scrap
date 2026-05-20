@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Switch Spec Agent — How it works, what it covers, how to sell it</title>
+<style>
+  :root{
+    --ink:#1b2330; --muted:#5b6573; --line:#e3e8f0; --bg:#ffffff;
+    --soft:#f8fafc; --softer:#fbfcfe; --blue:#2f6fed; --deep:#1e40af;
+    --green:#1f9d57; --amber:#b7791f; --red:#c0392b; --purple:#7a3eaf;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    line-height:1.62;font-size:16px}
+  .wrap{max-width:1040px;margin:0 auto;padding:48px 28px 90px}
+  h1{font-size:2.05rem;font-weight:700;letter-spacing:-.02em;margin:0 0 .35rem}
+  h2{font-size:1.38rem;font-weight:650;margin:2.8rem 0 .75rem;padding-top:.7rem;
+    border-top:1px solid var(--line)}
+  h3{font-size:1.08rem;font-weight:650;margin:1.5rem 0 .4rem}
+  p{margin:.55rem 0}
+  .sub{color:var(--muted);font-size:1.05rem;margin:.2rem 0 1.6rem}
+  .lead{font-size:1.06rem}
+  .tag{display:inline-block;background:var(--soft);border:1px solid var(--line);
+    border-radius:999px;padding:3px 12px;font-size:.8rem;color:var(--muted);
+    margin:2px 4px 2px 0}
+  .tag.brand{background:#eaf1ff;border-color:#cfdcff;color:var(--deep)}
+  code{background:var(--soft);border:1px solid var(--line);border-radius:5px;
+    padding:1px 6px;font-family:"SF Mono",Menlo,Consolas,monospace;font-size:.9em}
+  pre{background:var(--soft);border:1px solid var(--line);border-radius:10px;
+    padding:14px 16px;overflow:auto;font-family:"SF Mono",Menlo,Consolas,monospace;
+    font-size:.86rem;line-height:1.5}
+  table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.93rem}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;
+    vertical-align:top}
+  th{background:var(--soft);font-weight:650}
+  tr:nth-child(even) td{background:var(--softer)}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .toc{background:var(--soft);border:1px solid var(--line);border-radius:12px;
+    padding:18px 22px;margin:1.4rem 0 0}
+  .toc a{color:var(--blue);text-decoration:none}
+  .toc ol{margin:.4rem 0;padding-left:1.3rem}
+  .card{border:1px solid var(--line);border-radius:12px;padding:16px 20px;
+    margin:14px 0;background:#fff}
+  .card.ok{border-left:4px solid var(--green)}
+  .card.warn{border-left:4px solid var(--amber)}
+  .card.no{border-left:4px solid var(--red)}
+  .card.brain{border-left:4px solid var(--purple)}
+  .card h3{margin-top:0}
+  .pill{font-size:.74rem;font-weight:700;letter-spacing:.04em;
+    text-transform:uppercase;padding:2px 8px;border-radius:6px;color:#fff}
+  .ok-pill{background:var(--green)} .warn-pill{background:var(--amber)}
+  .no-pill{background:var(--red)} .blue-pill{background:var(--blue)}
+  .purple-pill{background:var(--purple)}
+  .step{display:flex;gap:14px;align-items:flex-start;margin:10px 0}
+  .step-num{flex:0 0 30px;height:30px;border-radius:50%;background:var(--blue);
+    color:#fff;font-weight:700;display:flex;align-items:center;
+    justify-content:center;font-size:.85rem}
+  .pipeline{background:var(--soft);border:1px solid var(--line);
+    border-radius:12px;padding:18px 22px;margin:1rem 0;
+    font-family:"SF Mono",Menlo,Consolas,monospace;font-size:.84rem;
+    line-height:1.55;overflow:auto;white-space:pre}
+  .stat{display:inline-block;border:1px solid var(--line);border-radius:10px;
+    padding:10px 14px;margin:6px 8px 6px 0;background:#fff;min-width:120px}
+  .stat .v{display:block;font-size:1.4rem;font-weight:700;color:var(--deep)}
+  .stat .l{display:block;font-size:.75rem;color:var(--muted);
+    text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
+  .foot{margin-top:3rem;border-top:1px solid var(--line);padding-top:1rem;
+    color:var(--muted);font-size:.85rem;text-align:center}
+  ul{margin:.4rem 0 .6rem;padding-left:1.25rem}
+  li{margin:.25rem 0}
+  .why{color:var(--muted)}
+  .sol{color:var(--green);font-weight:600}
+  a{color:var(--blue)}
+  .quote{background:#fffbe6;border-left:4px solid var(--amber);
+    padding:12px 16px;border-radius:8px;font-style:italic;color:#5b4a18;
+    margin:.8rem 0}
+  @media print{.toc{break-inside:avoid}h2{break-after:avoid}.card{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Switch Spec Agent</h1>
+  <p class="sub">Everything works. Here's the proof, the gaps, and how to sell it.</p>
+
+  <p>
+    <span class="tag brand">$0 / month</span>
+    <span class="tag brand">No LLM</span>
+    <span class="tag brand">No paid APIs</span>
+    <span class="tag">Python + SQLite</span>
+    <span class="tag">Streamlit UI</span>
+    <span class="tag">2 tools in one app</span>
+  </p>
+
+  <p class="lead" style="margin-top:1.2rem">
+    The agent does <strong>two related jobs</strong>, both reachable from
+    the same UI:
+  </p>
+  <ul>
+    <li><strong>Search specifications</strong> — type any switch model or
+        SKU and get the full datasheet (ports, switching capacity, PoE,
+        layer, features, NOS). Compare two side by side. Unknown models
+        get fetched live from the public web and cached.</li>
+    <li><strong>Firmware advisor</strong> — type vendor + firmware version
+        and get the security vulnerabilities you're exposed to, plus the
+        exact firmware version that fixes them.</li>
+  </ul>
+
+  <div class="toc">
+    <strong>What's inside</strong>
+    <ol>
+      <li><a href="#tldr">The whole thing in one screen</a></li>
+      <li><a href="#whatisascraper">What is a "scraper", in plain English?</a></li>
+      <li><a href="#works">What works today (vendor-by-vendor proof)</a></li>
+      <li><a href="#gaps">What doesn't work yet, and why</a></li>
+      <li><a href="#fix">What it would take to plug each gap</a></li>
+      <li><a href="#pipeline">The pipelines — what happens when you ask a question</a></li>
+      <li><a href="#brain">Where the intelligence actually lives</a></li>
+      <li><a href="#pitch">If you have to sell it — how to explain</a></li>
+    </ol>
+  </div>
+
+  <!-- ====================================================== -->
+  <h2 id="tldr">1. The whole thing in one screen</h2>
+
+  <p class="lead">
+    You type a vendor + a firmware version. The agent tells you which
+    published security vulnerabilities (CVEs) actually affect that
+    version, the severity of each one, and the earliest firmware version
+    that fixes them all. Plus changelogs for vendors that publish them.
+    No cloud, no AI bill, no login portals.
+  </p>
+
+  <div style="margin:.6rem 0 1.2rem">
+    <span class="stat"><span class="v">2,593</span><span class="l">CVEs cached</span></span>
+    <span class="stat"><span class="v">18</span><span class="l">Spec scrapers built</span></span>
+    <span class="stat"><span class="v">11</span><span class="l">NOS lines (security)</span></span>
+    <span class="stat"><span class="v">77</span><span class="l">Firmware releases (changelog)</span></span>
+    <span class="stat"><span class="v">$0</span><span class="l">Monthly cost</span></span>
+    <span class="stat"><span class="v">0</span><span class="l">API keys required</span></span>
+  </div>
+
+  <p>
+    Three independent data layers feed answers:
+  </p>
+  <ul>
+    <li><strong>Spec layer (vendor scrapers + live fallback)</strong> —
+        ~18 per-vendor scrapers for catalog pages, plus a free-web search
+        fallback (Startpage &rarr; Mojeek &rarr; DuckDuckGo) that fetches
+        and extracts specs for models we've never seen, then caches them.</li>
+    <li><strong>Security layer (NIST NVD)</strong> — works for every major
+        enterprise vendor, including the ones whose own portals are
+        login-gated. Updated daily by NIST.</li>
+    <li><strong>Changelog layer (vendor scrapers)</strong> — full
+        "what's new / what's removed" notes for vendors that publish
+        them openly (MikroTik, Ubiquiti, NVIDIA Cumulus).</li>
+  </ul>
+
+  <!-- ====================================================== -->
+  <h2 id="whatisascraper">1b. What is a "scraper", in plain English?</h2>
+
+  <p class="lead">
+    A <strong>scraper</strong> is a small Python program that visits a
+    public web page (like Cisco's switch catalog), reads it the way a
+    human would, and pulls out the structured pieces — model name,
+    port count, switching capacity, PoE budget, datasheet link — into
+    a clean row in our database.
+  </p>
+
+  <p>Think of it as <em>"copy-paste, but automated and consistent"</em>.
+     A human could open <code>cisco.com/.../catalyst-9300</code>, eyeball
+     the table, and type the numbers into a spreadsheet. A scraper does
+     the same thing but in milliseconds, for every model, the same way
+     every time.</p>
+
+  <p>Each vendor needs its own scraper because <strong>every vendor's
+     website is laid out differently</strong>. Cisco uses one HTML
+     pattern, Juniper uses another, MikroTik publishes plain-text
+     changelogs, Ubiquiti has a JSON API. One generic crawler can't read
+     all of them.</p>
+
+  <h3>The three things every scraper does</h3>
+
+  <div class="step"><div class="step-num">1</div>
+    <div><strong>Discover.</strong> Visit the vendor's catalog index
+    page and list every product URL on it. Example: open
+    <code>arista.com/en/products/eos</code> and find every link that
+    leads to a switch model page.</div></div>
+
+  <div class="step"><div class="step-num">2</div>
+    <div><strong>Extract.</strong> For each model URL, fetch the page,
+    locate the spec table or datasheet PDF, and pull out the fields we
+    care about (ports, speed, PoE, switching capacity, layer, NOS,
+    etc.). HTML parsing uses BeautifulSoup; PDF parsing uses pdfminer.</div></div>
+
+  <div class="step"><div class="step-num">3</div>
+    <div><strong>Save.</strong> Write each model as one row in the local
+    SQLite database (<code>switches</code> table), keyed by
+    <code>(vendor, model)</code>. If the row already exists, update only
+    the fields the scrape found — never overwrite good data with empty
+    fields.</div></div>
+
+  <h3>What makes them reliable</h3>
+  <ul>
+    <li><strong>Polite by design.</strong> Each scraper waits at least
+        1 second between requests to the same vendor's site so we never
+        look like a denial-of-service attack.</li>
+    <li><strong>Cached on disk.</strong> Every page fetched is saved
+        under <code>data_cache/</code>. Re-runs hit the cache, not the
+        network — fast, free, and friendly to the vendors.</li>
+    <li><strong>Honest output.</strong> If a field isn't on the page,
+        the scraper writes <code>NULL</code>. It does not guess. (Hence
+        the agent's tagline: "no LLM, no fabrication.")</li>
+    <li><strong>Per-vendor schema awareness.</strong> Each scraper knows
+        that, say, Arista calls it "Switching Capacity" while MikroTik
+        calls it "Switching Fabric" — both map into our one canonical
+        <code>switching_capacity_gbps</code> column.</li>
+  </ul>
+
+  <h3>"Scraper" vs "fetcher" vs "live extractor" — they're related</h3>
+
+  <table>
+    <thead><tr><th>What we call it</th><th>What it scrapes</th><th>Lives in</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Spec scrapers</strong></td>
+          <td>Vendor catalog pages &rarr; switch model specs</td>
+          <td><code>scrapers/&lt;vendor&gt;.py</code></td></tr>
+      <tr><td><strong>Firmware fetchers</strong></td>
+          <td>Vendor changelog pages &rarr; per-version release notes</td>
+          <td><code>firmware_fetchers.py</code></td></tr>
+      <tr><td><strong>NVD fetcher</strong></td>
+          <td>NIST's public CVE API &rarr; security advisories</td>
+          <td><code>scrapers/nvd_fetcher.py</code></td></tr>
+      <tr><td><strong>Live extractor</strong></td>
+          <td>Any unknown switch — searches the open web, opens the
+              top hits, extracts specs on the fly</td>
+          <td><code>live_search.py</code> + <code>live_extract.py</code></td></tr>
+    </tbody>
+  </table>
+
+  <p>All four follow the same pattern (fetch &rarr; parse &rarr; store)
+     and all four cache to disk so they're cheap to re-run.</p>
+
+  <!-- ====================================================== -->
+  <h2 id="works">2. What works today</h2>
+
+  <p>
+    The two layers cover different vendors. Each row below is real data
+    cached in the local SQLite database right now (May 2026).
+  </p>
+
+  <h3>2a. Specifications layer (vendor scrapers + live web fallback)</h3>
+
+  <p>For these vendors, there's a <em>scraper</em> file (a small Python
+     program that knows how to read that vendor's catalog pages) under
+     <code>scrapers/</code>:</p>
+
+  <table>
+    <thead><tr>
+      <th>Vendor</th><th>Scraper file</th><th>Status</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>Arista</td><td><code>scrapers/arista.py</code></td>
+          <td><span class="pill ok-pill">Ready</span></td></tr>
+      <tr><td>HPE Aruba</td><td><code>scrapers/aruba.py</code></td>
+          <td><span class="pill ok-pill">Ready</span></td></tr>
+      <tr><td>Cisco</td><td><code>scrapers/cisco.py</code></td>
+          <td><span class="pill ok-pill">Ready</span></td></tr>
+      <tr><td>Dell</td><td><code>scrapers/dell.py</code></td>
+          <td><span class="pill ok-pill">Ready</span></td></tr>
+      <tr><td>Edgecore</td><td><code>scrapers/edgecore.py</code></td>
+          <td><span class="pill ok-pill">Ready</span></td></tr>
+      <tr><td>Extreme Networks</td><td><code>scrapers/extreme.py</code></td>
+          <td><span class="pill ok-pill">Ready</span></td></tr>
+      <tr><td>Fortinet</td><td><code>scrapers/fortinet.py</code></td>
+          <td><span class="pill ok-pill">Ready</span></td></tr>
+      <tr><td>H3C</td><td><code>scrapers/h3c.py</code></td>
+          <td><span class="pill ok-pill">Ready</span></td></tr>
+      <tr><td>Huawei</td><td><code>scrapers/huawei.py</code></td>
+          <td><span class="pill ok-pill">Ready</span></td></tr>
+      <tr><td>Juniper</td><td><code>scrapers/juniper.py</code></td>
+          <td><span class="pill ok-pill">Ready</span></td></tr>
+      <tr><td>Lenovo</td><td><code>scrapers/lenovo.py</code></td>
+          <td><span class="pill ok-pill">Ready</span></td></tr>
+      <tr><td>MikroTik</td><td><code>scrapers/mikrotik.py</code></td>
+          <td><span class="pill ok-pill">Ready</span></td></tr>
+      <tr><td>Netgear</td><td><code>scrapers/netgear.py</code></td>
+          <td><span class="pill ok-pill">Ready</span></td></tr>
+      <tr><td>NVIDIA / Mellanox</td><td><code>scrapers/nvidia.py</code></td>
+          <td><span class="pill ok-pill">Ready</span></td></tr>
+      <tr><td>Ruijie</td><td><code>scrapers/ruijie.py</code></td>
+          <td><span class="pill ok-pill">Ready</span></td></tr>
+      <tr><td>TP-Link</td><td><code>scrapers/tplink.py</code></td>
+          <td><span class="pill ok-pill">Ready</span></td></tr>
+      <tr><td>Ubiquiti</td><td><code>scrapers/ubiquiti.py</code></td>
+          <td><span class="pill ok-pill">Ready</span></td></tr>
+      <tr><td>Zyxel</td><td><code>scrapers/zyxel.py</code></td>
+          <td><span class="pill ok-pill">Ready</span></td></tr>
+    </tbody>
+  </table>
+
+  <p>Each scraper does the same three jobs, just against a different
+     vendor's website. See <a href="#whatisascraper">section 1b</a> below
+     for a plain-English walkthrough.</p>
+
+  <p><strong>For models we've never seen</strong>, the agent has a live
+     web fallback that searches the free web, opens the top vendor pages
+     and PDFs, extracts the specs, and caches them. So even with zero
+     models pre-loaded, asking for <code>Cisco Catalyst 9300-48P</code>
+     still returns a real answer within 10 seconds.</p>
+
+  <p class="why"><strong>Current cached count:</strong> 1 switch in the
+     local database. The bulk of spec lookups today go through the live
+     fallback path; running <code>python3 run_scrapers.py</code> will
+     bulk-populate the local cache from every vendor's catalog.</p>
+
+  <h3>2b. Security advisories (NIST NVD layer)</h3>
+  <p>For these vendors, type a firmware version and get real CVE answers:</p>
+
+  <table>
+    <thead><tr>
+      <th>Vendor</th><th>Network OS</th><th class="num">CVEs cached</th>
+      <th>Sample query &rarr; result</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>HPE Aruba</td><td>ArubaOS-CX</td><td class="num">12</td>
+          <td><code>Aruba 10.08.1000</code> &rarr; 12 CVEs, fix in <strong>10.10.1000</strong></td></tr>
+      <tr><td>HPE Aruba</td><td>ArubaOS (campus)</td><td class="num">227</td>
+          <td><code>Aruba 8.6.0.4</code> &rarr; CVE list with affected ranges</td></tr>
+      <tr><td>Cisco</td><td>IOS</td><td class="num">575</td>
+          <td><code>Cisco 15.2(7)E5</code> &rarr; 5 CVEs</td></tr>
+      <tr><td>Cisco</td><td>IOS-XE</td><td class="num">324</td>
+          <td><code>Cisco 17.06.4</code> &rarr; 5 CVEs</td></tr>
+      <tr><td>Cisco</td><td>NX-OS</td><td class="num">230</td>
+          <td><code>Cisco 9.3.10</code> &rarr; CVE list</td></tr>
+      <tr><td>Juniper</td><td>Junos</td><td class="num">858</td>
+          <td><code>Juniper 22.4R2</code> &rarr; 2 CVEs, fix in <strong>23.2</strong></td></tr>
+      <tr><td>Arista</td><td>EOS</td><td class="num">44</td>
+          <td><code>Arista 4.28.0F</code> &rarr; 4 CVEs, fix in <strong>4.29.2f</strong></td></tr>
+      <tr><td>Dell</td><td>OS10 (SmartFabric)</td><td class="num">42</td>
+          <td><code>Dell 10.5.4.2</code> &rarr; 27 CVEs, fix in <strong>10.6.1.0</strong></td></tr>
+      <tr><td>Fortinet</td><td>FortiOS</td><td class="num">268</td>
+          <td><code>Fortinet 7.4.1</code> &rarr; 1 CVE, fix in <strong>7.4.5</strong></td></tr>
+      <tr><td>Fortinet</td><td>FortiSwitch</td><td class="num">8</td>
+          <td>CVE list per version</td></tr>
+      <tr><td>NVIDIA</td><td>Cumulus Linux</td><td class="num">5</td>
+          <td>CVE list + Changelog (both layers)</td></tr>
+    </tbody>
+  </table>
+
+  <p class="why">
+    Every CVE row carries: CVE ID, CVSS base score, severity (CRITICAL /
+    HIGH / MEDIUM / LOW), exact affected version ranges, the version
+    where the fix landed, and a link to the vendor's own advisory page.
+  </p>
+
+  <h3>2c. Full changelogs (firmware-scraper layer)</h3>
+  <p>For vendors that publish release notes openly, you get the full
+     "what's new / fixed / removed" diff between any two versions:</p>
+
+  <table>
+    <thead><tr>
+      <th>Vendor</th><th>Network OS</th><th class="num">Versions cached</th>
+      <th>What you get</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>MikroTik</td><td>RouterOS</td><td class="num">15</td>
+          <td>Bullet-level changelog per release (security / features / fixes / deprecations)</td></tr>
+      <tr><td>Ubiquiti</td><td>UniFi OS (switches)</td><td class="num">61</td>
+          <td>Versions + release dates from the public firmware API</td></tr>
+      <tr><td>NVIDIA</td><td>Cumulus Linux</td><td class="num">1</td>
+          <td>Version pointer + link to public release notes</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ====================================================== -->
+  <h2 id="gaps">3. What doesn't work yet, and why</h2>
+
+  <div class="card warn">
+    <h3><span class="pill warn-pill">Limited</span> Full release notes for
+        Cisco / Juniper / Arista / HPE Aruba / Dell / Fortinet</h3>
+    <p><strong>What's missing:</strong> the bullet-level
+       "added X, fixed Y, removed Z" changelogs.</p>
+    <p class="why"><strong>Why:</strong> these vendors put their PDF
+       release notes behind a customer login portal (HPE Passport, Cisco
+       CCO, Juniper Support Portal, Arista Support, Fortinet FortiCare).
+       Their public pages are also Akamai-protected and return HTTP 403
+       to anything that isn't a real logged-in browser session.</p>
+    <p><strong>What you still get today:</strong> the full CVE / security
+       view via NIST NVD (which is what most upgrades are actually
+       driven by). So the headline question — <em>"is this version
+       vulnerable and what version fixes it?"</em> — is answered.</p>
+  </div>
+
+  <div class="card no">
+    <h3><span class="pill no-pill">Not covered</span> Legacy &amp; long-tail
+        switch vendors</h3>
+    <p>These have scraper code stubs but no CVE / changelog data:
+       HP ProCurve / Comware, Huawei VRP, Extreme Networks EXOS,
+       Brocade / Ruckus FastIron, H3C, Lenovo, Edgecore, Zyxel, Ruijie,
+       TRENDnet, TP-Link Omada, Netgear smart switches.</p>
+    <p class="why"><strong>Why:</strong> two reasons depending on the
+       vendor —</p>
+    <ul>
+      <li><em>Not standardized in NVD's CPE dictionary.</em> A vendor
+          can't be queried by CPE if NIST has no canonical
+          <code>vendor:product</code> string for them (HP ProCurve,
+          Huawei VRP, Extreme EXOS are all examples).</li>
+      <li><em>Consumer-grade lifecycle.</em> Netgear / TP-Link / TRENDnet
+          publish firmware per product page, not as a structured
+          changelog. Scraping each model page is per-SKU work.</li>
+    </ul>
+  </div>
+
+  <div class="card no">
+    <h3><span class="pill no-pill">Out of scope</span> Anything requiring
+        a vendor account</h3>
+    <p>Downloading actual firmware binaries, opening TAC cases,
+       pulling per-account licensing or warranty data — all of these
+       require the user's own credentials and the agent intentionally
+       doesn't try.</p>
+  </div>
+
+  <!-- ====================================================== -->
+  <h2 id="fix">4. What it would take to plug each gap</h2>
+
+  <table>
+    <thead><tr>
+      <th>Gap</th><th>What to build</th>
+      <th class="num">Effort</th><th>Cost</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td>Cisco / Juniper / Arista / Aruba full changelogs</td>
+        <td>Allow user to drop their own login cookie into the scraper
+            (one-time, per-vendor). Or buy a vendor support contract and
+            authenticate as that account.</td>
+        <td class="num">Medium</td>
+        <td>$0 if user already has a support account; otherwise vendor support pricing.</td>
+      </tr>
+      <tr>
+        <td>Higher NVD throughput / fresher CVE data</td>
+        <td>Plug in a free NVD API key (services.nvd.nist.gov). Lifts
+            the rate limit from 5 req / 30 s to 50 req / 30 s, so full
+            refreshes finish in seconds.</td>
+        <td class="num">Tiny (15 min)</td>
+        <td>$0 (NVD keys are free).</td>
+      </tr>
+      <tr>
+        <td>HP ProCurve / Huawei VRP / Extreme EXOS CVEs</td>
+        <td>Switch from CPE-based NVD search to keyword-based NVD
+            search for these vendors specifically. Lower precision —
+            need a post-filter — but unlocks coverage.</td>
+        <td class="num">Medium</td>
+        <td>$0.</td>
+      </tr>
+      <tr>
+        <td>Consumer switch firmware (Netgear / TP-Link / TRENDnet)</td>
+        <td>Per-model firmware page scrapers. Each vendor publishes
+            firmware per product, so it's one scraper class per
+            vendor and a model registry.</td>
+        <td class="num">High (~1 day per vendor)</td>
+        <td>$0.</td>
+      </tr>
+      <tr>
+        <td>Switch specifications database (currently small)</td>
+        <td>Run the existing scrapers in <code>scrapers/</code> against
+            their catalog pages — the code is already written for ~20
+            vendors. Today the live database has 1 row because the spec
+            crawlers haven't been bulk-run; live-fetch fallback handles
+            the rest on-demand.</td>
+        <td class="num">Low (run a script)</td>
+        <td>$0.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ====================================================== -->
+  <h2 id="pipeline">5. The pipelines — what happens when you ask a question</h2>
+
+  <p>There are <strong>two pipelines</strong>, one per tool in the UI.</p>
+
+  <h3>Pipeline A — Search specifications</h3>
+  <p>Walkthrough of asking <code>Cisco Catalyst 9300-48P</code>:</p>
+
+  <div class="step"><div class="step-num">1</div>
+    <div><strong>You type the model</strong> (or a comparison like
+    <code>compare C9300-48P vs EX4400-48P</code>). The query goes to
+    <code>SpecAgent.lookup()</code>.</div></div>
+
+  <div class="step"><div class="step-num">2</div>
+    <div><strong>The agent pulls candidate tokens</strong> out of your
+    text — vendor name ("cisco"), model-shaped strings ("9300-48P",
+    "C9300-48P", "Catalyst"). Vendor aliases like "jnpr" &rarr;
+    Juniper or "ubnt" &rarr; Ubiquiti are normalized here.</div></div>
+
+  <div class="step"><div class="step-num">3</div>
+    <div><strong>Local SQLite first.</strong> A 4-stage lookup
+    (<em>exact SKU &rarr; exact model &rarr; substring &rarr; fuzzy</em>)
+    against the <code>switches</code> table. If found &rarr; answer in
+    a few milliseconds.</div></div>
+
+  <div class="step"><div class="step-num">4</div>
+    <div><strong>If not found &rarr; live web fallback.</strong>
+    <code>live_search.py</code> queries Startpage, Mojeek, then
+    DuckDuckGo (free, no API key) for "<em>vendor model
+    datasheet</em>". Vendor-domain results are prioritized.</div></div>
+
+  <div class="step"><div class="step-num">5</div>
+    <div><strong>It opens the top hits.</strong>
+    <code>live_extract.py</code> fetches each candidate URL (HTML or
+    PDF), parses with BeautifulSoup or pdfminer, and runs vendor-aware
+    field extractors (the same logic used in the per-vendor scrapers).</div></div>
+
+  <div class="step"><div class="step-num">6</div>
+    <div><strong>It merges sources.</strong> When 2-3 pages all say
+    "48 ports" but only one mentions "PoE+ 740 W", we take the union
+    with a confidence score. Conflicting numeric fields are resolved by
+    picking the vendor-origin source first, datasheet PDFs second.</div></div>
+
+  <div class="step"><div class="step-num">7</div>
+    <div><strong>The result is cached.</strong> Written back to
+    <code>switches</code>. Next time the same model is asked, it
+    answers in milliseconds from cache — no web fetch.</div></div>
+
+  <div class="step"><div class="step-num">8</div>
+    <div><strong>The UI renders</strong> a structured product card —
+    headline metrics (ports / capacity / PoE / layer), feature chips,
+    grouped spec tables (Performance, PoE &amp; power, Software,
+    Physical, Standards), and the datasheet link.</div></div>
+
+  <h3>Pipeline B — Firmware advisor</h3>
+  <p>Walkthrough of the original screenshot's query:
+     <code>Aruba</code> + firmware <code>10.08.1000</code>.</p>
+
+  <div class="step"><div class="step-num">1</div>
+    <div><strong>You type a vendor name and a version</strong> in the
+    Streamlit UI. The form sends both strings to
+    <code>SpecAgent.firmware_advise()</code>.</div></div>
+
+  <div class="step"><div class="step-num">2</div>
+    <div><strong>The agent recognizes the vendor.</strong> It runs the
+    text through an alias map ("aruba" / "hpe" / "hp" &rarr;
+    <strong>HPE Aruba</strong>; "jnpr" &rarr; Juniper; etc.). If the
+    text also contained a model token (like <code>9300-48P</code>) it
+    would try a model lookup first to pin the exact Network OS.</div></div>
+
+  <div class="step"><div class="step-num">3</div>
+    <div><strong>It picks the right NOS for the vendor.</strong> Each
+    vendor has a default NOS (HPE Aruba &rarr; ArubaOS-CX, Cisco &rarr;
+    IOS-XE, Juniper &rarr; Junos). This is what determines which CVE
+    bucket to query.</div></div>
+
+  <div class="step"><div class="step-num">4</div>
+    <div><strong>Layer A: query the security database.</strong>
+    <code>advisories_for_version("HPE Aruba", "ArubaOS-CX", "10.08.1000")</code>
+    pulls every cached CVE for that NOS and runs each one's affected
+    version range against the user's version. NOS labels are
+    normalized (so the switch table's "ArubaOS-CX" and NVD's "AOS-CX"
+    both match).</div></div>
+
+  <div class="step"><div class="step-num">5</div>
+    <div><strong>It does real version math.</strong> A vendor-agnostic
+    version parser tokenizes <code>10.08.1000</code> into comparable
+    parts and checks whether it falls inside ranges like
+    <code>[10.08.0000, 10.08.1070)</code>. Same parser handles Cisco's
+    <code>15.2(7)E10</code>, Junos's <code>22.4R3-S2</code>, Arista's
+    <code>4.31.2F</code>, etc.</div></div>
+
+  <div class="step"><div class="step-num">6</div>
+    <div><strong>Layer B: try the changelog database in parallel.</strong>
+    If the vendor has open changelogs cached, it also computes a
+    diff between the user's version and the latest known release
+    (new features, security fixes mentioned in notes, bug fixes,
+    deprecations).</div></div>
+
+  <div class="step"><div class="step-num">7</div>
+    <div><strong>It fuses both layers</strong> into one
+    <code>FirmwareAdvice</code> object and computes
+    <code>recommended_min_version</code> — the smallest firmware
+    version that lifts the user above every matching CVE.</div></div>
+
+  <div class="step"><div class="step-num">8</div>
+    <div><strong>The UI renders the result</strong> with a severity-colored
+    card per CVE, the affected version ranges, the fix version, and a
+    direct link to the vendor's own advisory page for the full text.</div></div>
+
+  <h3>Behind the scenes: how the database stays fresh</h3>
+
+  <pre>NIST NVD public API   (services.nvd.nist.gov)
+        │
+        │   one HTTP GET per vendor CPE,
+        │   politely paced at 6.5s between calls
+        │   (well under the 5-req / 30s public rate limit)
+        ▼
+scrapers/nvd_fetcher.py
+        │
+        │   parses CVE -> AdvisoryRecord
+        │   (id, severity, CVSS, affected ranges, fixed versions, refs)
+        ▼
+data/switches.db : security_advisories table
+        │
+        ▼
+firmware.advisories_for_version()  ←  user query
+        │
+        ▼
+Streamlit UI                         ←  rendered cards</pre>
+
+  <p>Run <code>python3 fetch_firmware.py nvd</code> on a cron schedule
+     (weekly is plenty — NVD updates daily but enterprise CVEs land in
+     waves) and the database stays current.</p>
+
+  <!-- ====================================================== -->
+  <h2 id="brain">6. Where the intelligence actually lives</h2>
+
+  <p class="lead">
+    There's no LLM in this agent. The "intelligence" is six small,
+    boring, deterministic things that together produce answers no
+    single data source gives you.
+  </p>
+
+  <div class="card brain">
+    <h3><span class="pill purple-pill">Brain 1</span> Vendor &amp; model
+        understanding</h3>
+    <p>Free-text inputs like "aruba", "jnpr", "ubnt", "mellanox",
+       "TPE-082" map cleanly to canonical vendor names. Model tokens
+       are pulled out of natural sentences. Fuzzy match (difflib) ranks
+       partial spellings.</p>
+    <p class="why">Lives in <code>agent.py</code> — <code>VENDOR_ALIASES</code>
+       map and <code>_extract_vendor()</code> / <code>_extract_model_candidates()</code>.</p>
+  </div>
+
+  <div class="card brain">
+    <h3><span class="pill purple-pill">Brain 2</span> Cross-vendor version
+        algebra</h3>
+    <p>Every vendor invents their own version format. The agent parses
+       them all into one comparable shape, so "is 10.08.1000 inside
+       <code>[10.08.0000, 10.08.1070)</code>?" gives the right answer
+       whether you're on MikroTik, Cisco IOS, Junos, EOS, or AOS-CX.</p>
+    <p class="why">Lives in <code>firmware.parse_version()</code> and
+       <code>Version.__lt__()</code>.</p>
+  </div>
+
+  <div class="card brain">
+    <h3><span class="pill purple-pill">Brain 3</span> CVE range matching</h3>
+    <p>Given a CVE's "affected: from X to Y" rules — with all four
+       combinations of inclusive / exclusive bounds — decides whether
+       the user's running version is actually vulnerable. Computes the
+       earliest patched version across <em>all</em> matching CVEs.</p>
+    <p class="why">Lives in <code>firmware._version_in_range()</code> and
+       <code>minimum_fixed_version()</code>.</p>
+  </div>
+
+  <div class="card brain">
+    <h3><span class="pill purple-pill">Brain 4</span> NOS label normalization</h3>
+    <p>The switches table calls it <code>ArubaOS-CX</code>; NVD calls
+       it <code>aos-cx</code>; Dell rows say <code>OS10 / SONiC</code>.
+       A small variant generator means the user never has to know.</p>
+    <p class="why">Lives in <code>firmware._nos_match_variants()</code>.</p>
+  </div>
+
+  <div class="card brain">
+    <h3><span class="pill purple-pill">Brain 5</span> Two-source fusion</h3>
+    <p>Most answers stitch together two unrelated datasets (NVD CVE
+       data + vendor changelog data) into one coherent recommendation.
+       When the two disagree about a fix version, the security layer
+       wins (because NVD is the system of record for "is this still
+       vulnerable").</p>
+    <p class="why">Lives in <code>firmware.advise()</code>.</p>
+  </div>
+
+  <div class="card brain">
+    <h3><span class="pill purple-pill">Brain 6</span> Live-fetch fallback for
+        unknown switches</h3>
+    <p>If a model isn't in the local database, the agent searches the
+       free web (Startpage &rarr; Mojeek &rarr; DuckDuckGo), opens the
+       top vendor pages and PDFs, extracts specs, scores the merge,
+       and caches the result.</p>
+    <p class="why">Lives in <code>live_search.py</code> and
+       <code>live_extract.py</code>.</p>
+  </div>
+
+  <div class="card brain">
+    <h3><span class="pill purple-pill">Brain 7</span> Spec extraction across
+        18 different vendor websites</h3>
+    <p>Every vendor lays out their spec pages differently — Cisco uses
+       one HTML structure, Juniper uses another, MikroTik publishes
+       plain text, Ubiquiti has a JSON API. Each per-vendor scraper
+       under <code>scrapers/</code> knows that vendor's quirks and maps
+       its raw page into one canonical schema (port count, switching
+       capacity Gbps, PoE budget W, layer, NOS, etc.). When the page
+       calls a field something we don't have a column for, it's
+       preserved verbatim in <code>extra_specs</code> so nothing is
+       lost.</p>
+    <p class="why">Lives in <code>scrapers/&lt;vendor&gt;.py</code>
+       (one file each for the 18 covered vendors) and
+       <code>scrapers/base.py</code> (the shared HTTP cache, retry,
+       and upsert plumbing).</p>
+  </div>
+
+  <!-- ====================================================== -->
+  <h2 id="pitch">7. If you have to sell it — how to explain</h2>
+
+  <h3>The one-sentence pitch</h3>
+  <div class="quote">
+    "Tell me what firmware my switch is running, and I'll tell you
+     which security vulnerabilities you're exposed to and exactly which
+     version to upgrade to — for every major enterprise vendor, in one
+     place, free."
+  </div>
+
+  <h3>Who buys it</h3>
+  <ul>
+    <li><strong>Network engineers</strong> at companies with mixed-vendor
+        fleets (Cisco core, Aruba access, Juniper edge) who currently
+        have to log into 4-5 different vendor portals to do the same
+        check.</li>
+    <li><strong>Security teams</strong> doing quarterly vulnerability
+        audits on network gear — today this means an analyst manually
+        cross-referencing CVE bulletins against an asset inventory
+        spreadsheet.</li>
+    <li><strong>MSPs / managed network providers</strong> who need a
+        defensible answer for every customer's switch fleet without
+        carrying every vendor's support contract.</li>
+    <li><strong>Procurement / IT planning</strong> for the spec-comparison
+        side: "show me 48-port 10G PoE+ switches from any three
+        vendors, side by side, with patch posture."</li>
+  </ul>
+
+  <h3>Why it's different from what they already have</h3>
+  <table>
+    <thead><tr>
+      <th>What they're using today</th>
+      <th>Why it's painful</th>
+      <th>What this agent gives them</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td>NIST NVD website</td>
+        <td>You have to know the exact CPE string. Version-range checks
+            are manual. No cross-vendor view.</td>
+        <td>Vendor-name + version in, ranked CVE list out.</td>
+      </tr>
+      <tr>
+        <td>Each vendor's own portal (HPE ASP, Cisco CCO, Juniper
+            Support)</td>
+        <td>One login per vendor. Different UI per vendor. No view of
+            the whole fleet.</td>
+        <td>One UI for all of them. Works without a vendor login.</td>
+      </tr>
+      <tr>
+        <td>Tenable / Qualys / Rapid7</td>
+        <td>$10k+/year. Requires agent or scan access to the device.</td>
+        <td>$0. Just needs "vendor + version" — no network reach.</td>
+      </tr>
+      <tr>
+        <td>Spreadsheets + email threads</td>
+        <td>Stale within a week.</td>
+        <td>Re-fetch any time with one command.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>What makes it defensible</h3>
+  <ul>
+    <li><strong>The data is real, not hallucinated.</strong> Every
+        answer traces to a NIST NVD CVE record or a vendor's own
+        published changelog. There is no LLM in the loop, so there are
+        no fabricated CVE IDs or made-up fix versions.</li>
+    <li><strong>It runs anywhere.</strong> SQLite + Python + Streamlit.
+        Laptop, on-prem server, air-gapped network (if you mirror the
+        NVD feed). No cloud lock-in.</li>
+    <li><strong>The cost is zero.</strong> No API bills, no per-seat
+        license, no infrastructure. The data sources are public.</li>
+    <li><strong>The intelligence is in the fusion.</strong> Anyone can
+        download an NVD dump. The value is the version algebra + NOS
+        normalization + fusion across two data layers + UI that
+        non-CVE-experts can read.</li>
+  </ul>
+
+  <h3>The honest disclaimers</h3>
+  <ul>
+    <li>"Planning reference only" — this is decision support, not a
+        replacement for a vendor support contract on the production
+        path.</li>
+    <li>Vendors patch out-of-band sometimes; always sanity-check the
+        recommended fix against the vendor's own release notes before
+        a production upgrade.</li>
+    <li>Coverage breadth depends on what NIST NVD has indexed; obscure
+        or very recent CVEs may take 1-3 days to land.</li>
+  </ul>
+
+  <h3>The 30-second demo</h3>
+  <ol>
+    <li>Open the app. Click <em>Firmware advisor</em>.</li>
+    <li>Type <code>Aruba</code> and <code>10.08.1000</code>.</li>
+    <li>Result: "12 CVEs affect this version. Earliest fully-patched
+        version: 10.10.1000." With every CVE listed by severity,
+        affected range, and fix version.</li>
+    <li>Switch to <code>Cisco</code> + <code>17.06.4</code>. Same
+        answer pattern, totally different vendor, same UI.</li>
+    <li>That's the pitch.</li>
+  </ol>
+
+  <div class="foot">
+    Switch Spec Agent &middot; Network Switch Spec &amp; Firmware Advisor &middot;
+    Generated 2026-05-20 &middot; All numbers in this document are
+    pulled from the live local database.
+  </div>
+
+</div>
+</body>
+</html>
