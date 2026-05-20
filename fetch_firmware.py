@@ -34,15 +34,31 @@ def _run_nvd(only_vendor: str | None, dry_run: bool, log):
     return ("nvd", "ok", n)
 
 
+def _run_kev(dry_run: bool, log):
+    """Run the CISA KEV overlay — flips the actively_exploited flag on
+    any of our cached CVEs that CISA has marked as actively exploited
+    in the wild."""
+    from scrapers.cisa_kev_fetcher import fetch_kev_catalog, apply_overlay
+    catalog = fetch_kev_catalog()
+    if not catalog:
+        return ("kev", "no data", 0)
+    if dry_run:
+        return ("kev", "dry-run", len(catalog))
+    matched, total = apply_overlay(catalog)
+    return ("kev", f"ok ({matched}/{total} matched)", matched)
+
+
 def main():
-    available = list(REGISTRY.keys()) + ["nvd"]
+    available = list(REGISTRY.keys()) + ["nvd", "kev"]
     p = argparse.ArgumentParser(description="Fetch firmware version data")
     p.add_argument(
         "vendors", nargs="*",
         help=(f"Vendors to fetch (default: all). Available: "
               f"{', '.join(available)}. "
               "Use 'nvd' to pull CVE/security-advisory data from NIST NVD "
-              "for vendors whose release notes are login-gated."),
+              "for vendors whose release notes are login-gated. "
+              "Use 'kev' to overlay CISA's actively-exploited flag "
+              "(requires 'nvd' to have been run first)."),
     )
     p.add_argument(
         "--nvd-vendor", default=None,
@@ -69,6 +85,10 @@ def main():
     for vendor in targets:
         if vendor == "nvd":
             summary.append(_run_nvd(args.nvd_vendor, args.dry_run, log))
+            grand_total += summary[-1][2]
+            continue
+        if vendor == "kev":
+            summary.append(_run_kev(args.dry_run, log))
             grand_total += summary[-1][2]
             continue
 

@@ -339,6 +339,12 @@ class Advisory:
     fixed_versions: list[str] = field(default_factory=list)
     references: list[dict] = field(default_factory=list)
     source: Optional[str] = None
+    # CISA "Known Exploited Vulnerabilities" overlay — True means
+    # attackers are using this CVE in the wild right now.
+    actively_exploited: bool = False
+    kev_date_added: Optional[str] = None
+    kev_due_date: Optional[str] = None
+    kev_required_action: Optional[str] = None
 
 
 _SEVERITY_RANK = {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1, None: 0}
@@ -352,6 +358,9 @@ def _row_to_advisory(row: sqlite3.Row) -> Advisory:
             return json.loads(value)
         except (json.JSONDecodeError, TypeError):
             return []
+    # KEV columns are added by a later migration; older DBs may not
+    # have them. Read defensively via the row's keys.
+    keys = set(row.keys())
     return Advisory(
         cve_id=row["cve_id"],
         vendor=row["vendor"],
@@ -366,6 +375,14 @@ def _row_to_advisory(row: sqlite3.Row) -> Advisory:
         fixed_versions=_j(row["fixed_versions"]),
         references=_j(row["references_json"]),
         source=row["source"],
+        actively_exploited=bool(row["actively_exploited"])
+            if "actively_exploited" in keys else False,
+        kev_date_added=row["kev_date_added"]
+            if "kev_date_added" in keys else None,
+        kev_due_date=row["kev_due_date"]
+            if "kev_due_date" in keys else None,
+        kev_required_action=row["kev_required_action"]
+            if "kev_required_action" in keys else None,
     )
 
 
@@ -443,8 +460,11 @@ def advisories_for_version(
             if _version_in_range(v, rng):
                 matching.append(adv)
                 break
+    # Sort order: actively-exploited first (those are the most urgent
+    # regardless of CVSS), then severity, then CVSS score, then date.
     matching.sort(
         key=lambda a: (
+            0 if a.actively_exploited else 1,
             -_SEVERITY_RANK.get((a.severity or "").upper(), 0),
             -(a.cvss_score or 0.0),
             a.published or "",
@@ -488,6 +508,21 @@ FETCHER_KEYS = {
     "Ubiquiti": "ubiquiti",
     "NVIDIA": "cumulus",
 }
+
+
+def _try_live_firmware(model: str, vendor: str):
+    """Lazy wrapper around live_firmware.live_firmware_lookup so the
+    import only happens when we actually need it (keeps cold start fast
+    and lets advise() work even if requests/bs4 aren't installed)."""
+    if not (model or vendor):
+        return None
+    try:
+        from live_firmware import live_firmware_lookup
+        return live_firmware_lookup(model or vendor, vendor_hint=vendor,
+                                    deadline_sec=8.5)
+    except Exception as e:  # pragma: no cover
+        logger.warning("live firmware lookup failed: %s", e)
+        return None
 
 # Vendors whose full *release notes* are behind a vendor login portal —
 # but whose security advisories ARE publicly available via NIST NVD and
@@ -595,6 +630,24 @@ def advise(
     elif not nos and gated:
         nos = DEFAULT_GATED_NOS.get(vendor)
     if not nos:
+        # No known NOS for this vendor — try the live firmware fallback
+        # so long-tail vendors (Westermo, Sophos, Tenda, Allied Telesis,
+        # Pluribus, ...) still produce a useful pointer instead of a
+        # dead-end "no default known" message.
+        live_rec = _try_live_firmware(model or "", vendor)
+        if live_rec is not None:
+            meta = []
+            if live_rec.release_date:
+                meta.append(f"released {live_rec.release_date}")
+            tail = f" ({', '.join(meta)})" if meta else ""
+            msg = (f"Latest publicly listed firmware for {vendor}: "
+                   f"v{live_rec.version}{tail}. Found via live web "
+                   f"search and now cached.")
+            return FirmwareAdvice(
+                vendor=vendor, nos=live_rec.nos or vendor,
+                current_version=current_version,
+                has_data=True, message=msg,
+            )
         return FirmwareAdvice(
             vendor=vendor, nos=None,
             current_version=current_version,
@@ -667,6 +720,25 @@ def advise(
     # Non-gated vendors: prefer the changelog diff, fall back to advisory data.
     if not diff:
         if not list_firmware(vendor, nos, db_path=db_path):
+            # Live firmware fallback — search the public web for the
+            # latest version pointer + notes URL. Cached on success.
+            live_rec = _try_live_firmware(model or "", vendor)
+            if live_rec is not None:
+                meta = []
+                if live_rec.release_date:
+                    meta.append(f"released {live_rec.release_date}")
+                tail = f" ({', '.join(meta)})" if meta else ""
+                msg = (f"Latest publicly listed firmware for {vendor}: "
+                       f"v{live_rec.version}{tail}. Found via live web "
+                       f"search and now cached.")
+                return FirmwareAdvice(
+                    vendor=vendor, nos=live_rec.nos or nos,
+                    current_version=current_version,
+                    has_data=True, message=msg,
+                    advisories=advisories,
+                    recommended_min_version=min_fix,
+                )
+
             key = FETCHER_KEYS.get(vendor)
             if key:
                 msg = (f"No firmware data cached for {vendor} {nos}. "

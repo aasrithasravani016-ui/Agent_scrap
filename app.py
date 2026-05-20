@@ -567,20 +567,45 @@ else:
             f'<div class="section-title">🔒 Security advisories '
             f'affecting your version ({len(advs)})</div>',
             unsafe_allow_html=True)
-        st.caption("Source: NIST National Vulnerability Database "
-                   "(public, no login).")
+        st.caption("Sources: NIST National Vulnerability Database (NVD) "
+                   "+ CISA Known Exploited Vulnerabilities catalog (KEV). "
+                   "Public, no login.")
+        # Count actively-exploited up front so the user sees the priority
+        kev_count = sum(1 for a in advs if a.actively_exploited)
+        if kev_count:
+            st.markdown(
+                f'<div style="background:#7F1D1D;color:#fff;padding:10px 14px;'
+                f'border-radius:8px;font-weight:700;margin:0 0 10px;">'
+                f'⚠ {kev_count} of these CVEs are on CISA\'s active-exploit '
+                f'list — patch these first.</div>',
+                unsafe_allow_html=True)
         for a in advs[:25]:
             color = sev_color.get((a.severity or "").upper(), "#475569")
             sev_label = (f"{a.severity} · CVSS {a.cvss_score}"
                          if a.cvss_score else (a.severity or ""))
+            kev_badge = ""
+            if a.actively_exploited:
+                kev_badge = (
+                    ' &nbsp;<span style="background:#7F1D1D;color:#fff;'
+                    'border-radius:6px;padding:2px 8px;font-size:.72rem;'
+                    'font-weight:800;letter-spacing:.04em;">'
+                    '⚠ ACTIVELY EXPLOITED</span>'
+                )
             with st.container(border=True):
                 head_l, head_r = st.columns([3, 1])
                 head_l.markdown(
                     f'**{a.cve_id}** &nbsp;'
                     f'<span style="background:{color};color:#fff;'
                     f'border-radius:6px;padding:2px 8px;font-size:.75rem;'
-                    f'font-weight:700;">{sev_label}</span>',
+                    f'font-weight:700;">{sev_label}</span>'
+                    f'{kev_badge}',
                     unsafe_allow_html=True)
+                if a.actively_exploited and a.kev_date_added:
+                    st.caption(
+                        f"On CISA's active-exploit list since "
+                        f"{a.kev_date_added}"
+                        + (f" — federal patch deadline: {a.kev_due_date}"
+                           if a.kev_due_date else ""))
                 if a.published:
                     head_r.caption(f"Published {a.published}")
                 if a.description:

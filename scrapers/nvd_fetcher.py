@@ -96,6 +96,53 @@ VENDOR_CPES: list[tuple[str, str, list[str]]] = [
     ("NVIDIA",     "Cumulus Linux",
      ["cpe:2.3:o:nvidia:cumulus_linux",
       "cpe:2.3:o:nvidia:cumulus_networks_cumulus_linux"]),
+
+    # NVIDIA Onyx (the old Mellanox MLNX-OS / Onyx switch OS, still
+    # running on a lot of data-center ToR switches NVIDIA absorbed)
+    ("NVIDIA",     "Onyx",
+     ["cpe:2.3:o:nvidia:onyx"]),
+
+    # Extreme Networks — two CPE spellings in NVD
+    ("Extreme Networks", "EXOS",
+     ["cpe:2.3:o:extremenetworks:exos",
+      "cpe:2.3:o:extremenetworks:extremexos"]),
+
+    # Huawei — switch CPEs are per-model in NVD, so we enumerate the
+    # families that actually have published CVEs. Vendor-wide CVE total
+    # is in the thousands, but most are phones / home routers; this
+    # list is just the switch (S-series + CloudEngine) products.
+    ("Huawei", "VRP",
+     ["cpe:2.3:o:huawei:s1700_firmware",
+      "cpe:2.3:o:huawei:s2700_firmware",
+      "cpe:2.3:o:huawei:s3700_firmware",
+      "cpe:2.3:o:huawei:s5700_firmware",
+      "cpe:2.3:o:huawei:s6300_firmware",
+      "cpe:2.3:o:huawei:s7700_firmware",
+      "cpe:2.3:o:huawei:s9300_firmware",
+      "cpe:2.3:o:huawei:s9700_firmware",
+      "cpe:2.3:o:huawei:cloudengine_5800_firmware",
+      "cpe:2.3:o:huawei:cloudengine_6800_firmware",
+      "cpe:2.3:o:huawei:cloudengine_7800_firmware",
+      "cpe:2.3:o:huawei:cloudengine_12800_firmware"]),
+
+    # Brocade (now Broadcom) — Fabric OS for FC SAN switches
+    ("Brocade", "Fabric OS",
+     ["cpe:2.3:o:brocade:fabric_os",
+      "cpe:2.3:a:brocade:network_advisor"]),
+
+    # Netgear smart-managed switches (the GS/M-series, not home routers)
+    ("Netgear", "Smart Managed",
+     ["cpe:2.3:o:netgear:gs108e_firmware",
+      "cpe:2.3:o:netgear:gs308t_firmware",
+      "cpe:2.3:o:netgear:gs710tup_firmware",
+      "cpe:2.3:o:netgear:gc108p_firmware",
+      "cpe:2.3:o:netgear:gc108pp_firmware",
+      "cpe:2.3:o:netgear:m4300-28g_firmware"]),
+
+    # TP-Link Omada controller (the SDN controller that manages their
+    # JetStream switches — CVEs hit the controller, not the switch OS)
+    ("TP-Link", "Omada Controller",
+     ["cpe:2.3:a:tp-link:omada_controller"]),
 ]
 
 
@@ -123,7 +170,11 @@ class AdvisoryRecord:
 # Pagination + parsing
 # ---------------------------------------------------------------------------
 PAGE_SIZE = 2000        # NVD max for CVE 2.0
-SLEEP_BETWEEN = 6.5     # stay under 5 req / 30s
+# Anonymous NVD limit is 5 requests / 30 seconds. We need a per-call sleep
+# >= 6 seconds. Long runs sometimes still get 429s when the bucket is
+# already depleted from a prior fetch, so we go 8s to leave headroom.
+# With a free NVD API key this could drop to ~0.6s.
+SLEEP_BETWEEN = 8.0
 
 
 def _best_cvss(metrics: dict) -> tuple[Optional[float], Optional[str], Optional[str]]:
@@ -308,11 +359,20 @@ class NvdFetcher:
     def run(self) -> list[AdvisoryRecord]:
         out: list[AdvisoryRecord] = []
         seen: set[tuple[str, str]] = set()   # (cve_id, vendor)
+        first = True
         for vendor, nos, cpes in VENDOR_CPES:
             if self.only_vendor and self.only_vendor not in vendor.lower():
                 continue
             cpe_vendor_set = {c.split(":")[3] for c in cpes if len(c.split(":")) > 3}
             for cpe in cpes:
+                # Inter-CPE sleep — many of the per-model CPEs return only
+                # a single page so the in-page sleep doesn't fire and we'd
+                # otherwise hammer NVD with N back-to-back calls. The cache
+                # means already-fetched pages skip the network, so this only
+                # delays actual hits.
+                if not first:
+                    time.sleep(SLEEP_BETWEEN)
+                first = False
                 logger.info("[NVD] %s / %s -> %s", vendor, nos, cpe)
                 try:
                     for rec in _yield_advisories(

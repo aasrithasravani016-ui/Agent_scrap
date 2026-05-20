@@ -129,6 +129,15 @@ CREATE TABLE IF NOT EXISTS security_advisories (
     source TEXT,                     -- 'nvd' / 'cisco-psirt' / etc.
     last_updated TEXT,
 
+    -- CISA "Known Exploited Vulnerabilities" overlay. When True, this
+    -- CVE is on the U.S. government's official list of vulnerabilities
+    -- that attackers are CURRENTLY using in the wild. Hugely important
+    -- for prioritization — most CVEs are theoretical, KEV ones aren't.
+    actively_exploited INTEGER DEFAULT 0,
+    kev_date_added TEXT,             -- ISO date CISA added it to the catalog
+    kev_due_date TEXT,               -- ISO date federal agencies must patch by
+    kev_required_action TEXT,        -- CISA's required mitigation text
+
     UNIQUE(cve_id, vendor)
 );
 

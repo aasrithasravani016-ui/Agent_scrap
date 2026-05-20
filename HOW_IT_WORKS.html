@@ -137,14 +137,37 @@
     page for the full text.
   </div>
 
+  <div class="step">
+    <b>Step 10 — Pushed coverage further (was too cautious the first time)</b>
+    Re-probed NIST for vendors I'd written off too quickly. Found
+    real coverage for Huawei (every S-series + CloudEngine switch model),
+    Extreme Networks EXOS, NVIDIA Onyx (the old Mellanox switch OS),
+    Brocade Fabric OS, Netgear smart-managed switches, and TP-Link
+    Omada Controller. Added them all to the fetcher.
+  </div>
+
+  <div class="step">
+    <b>Step 11 — Added CISA's Known Exploited Vulnerabilities (KEV) feed</b>
+    The U.S. Cybersecurity &amp; Infrastructure Security Agency keeps a
+    daily-updated list of CVEs that <em>attackers are using right now,
+    in the wild</em>. Built a second fetcher that downloads this list
+    and stamps every matching CVE in our database with an
+    "actively exploited" flag. These get a red badge in the UI and
+    float to the top of the alert list — because a CVE on this list is
+    not theoretical, it's currently being weaponized.
+  </div>
+
   <div class="done">
     <strong>End state:</strong> the screenshot you sent earlier — the
     one that said "release notes are behind a vendor login" — now
     shows 12 real security alerts affecting Aruba 10.08.1000, with the
-    recommendation to upgrade to 10.10.1000.
+    recommendation to upgrade to 10.10.1000. Across all vendors the
+    database now holds <strong>2,700+ security alerts</strong>, of
+    which <strong>~68 are flagged as actively exploited</strong> by
+    CISA.
   </div>
 
-  <h3>The four places we fetch data from</h3>
+  <h3>The five places we fetch data from</h3>
 
   <table>
     <thead><tr>
@@ -164,7 +187,12 @@
       <tr>
         <td>NIST NVD (government CVE database)</td>
         <td>Security vulnerabilities + affected/fixed versions</td>
-        <td>1 fetcher, 11 vendor families covered</td>
+        <td>1 fetcher, 17 vendor/NOS combinations covered</td>
+      </tr>
+      <tr>
+        <td>CISA KEV (Known Exploited Vulnerabilities)</td>
+        <td>Which CVEs are being attacked in the wild RIGHT NOW</td>
+        <td>1 overlay fetcher — flags matching rows in our database</td>
       </tr>
       <tr>
         <td>Open web (search engines)</td>
