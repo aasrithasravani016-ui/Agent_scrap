@@ -35,45 +35,82 @@ def _inject_css():
         html, body, [class*="css"], .stApp {
             font-family: 'Inter', system-ui, sans-serif;
         }
-        .stApp { background: #FFFFFF; }
+        .stApp {
+            background:
+              radial-gradient(900px 480px at 50% -80px,
+                              rgba(47,111,237,.07) 0%, rgba(47,111,237,0) 65%),
+              #FFFFFF;
+        }
         section[data-testid="stSidebar"],
         [data-testid="collapsedControl"] { display: none; }
 
         .block-container {
-            padding-top: 2.2rem; padding-bottom: 4rem; max-width: 880px;
+            padding-top: 3.2rem; padding-bottom: 4rem; max-width: 820px;
         }
         h1, h2, h3 { letter-spacing: -0.02em; color: #0F1B33; }
 
-        /* ---------- Minimal brand header ---------- */
+        /* ---------- Brand wordmark (small, top-left) ---------- */
         .brand {
-            font-size: 1.02rem; font-weight: 600; color: #0F1B33;
-            letter-spacing: -0.005em; margin: 0 0 1.5rem;
+            font-size: .92rem; font-weight: 600; color: #4A5568;
+            letter-spacing: .01em; margin: 0 0 2.4rem;
             display: flex; align-items: center;
         }
-        .brand::before {
-            content: ""; display: inline-block; width: 8px; height: 8px;
-            border-radius: 50%; background: #2F6FED; margin-right: .55rem;
+        .brand-mark {
+            width: 26px; height: 26px; border-radius: 8px;
+            background: linear-gradient(135deg, #2F6FED 0%, #5B8DEF 100%);
+            display:inline-flex; align-items:center; justify-content:center;
+            color:#fff; font-weight:800; font-size:.78rem;
+            margin-right:.55rem; letter-spacing: 0;
+            box-shadow: 0 4px 12px -4px rgba(47,111,237,.45);
         }
 
-        /* ---------- Tabs (radio styled as underlined text tabs) ---------- */
+        /* ---------- Centered hero heading (just text, no banner) ---------- */
+        .hero-head {
+            text-align: center; margin: .4rem 0 1.6rem;
+        }
+        .hero-head h1 {
+            font-size: 2.4rem; font-weight: 700; letter-spacing: -0.035em;
+            color: #0B1426; margin: 0 0 .55rem; line-height: 1.15;
+        }
+        .hero-head h1 .accent {
+            background: linear-gradient(90deg,#2F6FED 0%,#7C3AED 100%);
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero-head p {
+            color: #5B6573; font-size: .98rem; margin: 0;
+            max-width: 520px; margin-left:auto; margin-right:auto;
+            line-height: 1.5;
+        }
+
+        /* ---------- Tabs (underlined, centered) ---------- */
         div[role="radiogroup"] {
             display: flex; gap: 0; background: transparent;
             padding: 0; border-radius: 0; width: 100%;
-            margin: 0 0 1.6rem; border: none;
+            margin: 1.4rem 0 2rem; border: none;
             border-bottom: 1px solid #E6EAF2;
+            justify-content: center;
         }
         div[role="radiogroup"] > label {
-            border-radius: 0; padding: .55rem 0 .75rem !important;
-            margin: 0 1.8rem 0 0 !important; cursor: pointer; font-weight: 500;
+            border-radius: 0; padding: .6rem 0 .85rem !important;
+            margin: 0 1.8rem !important; cursor: pointer; font-weight: 500;
             color: #6B7488; transition: color .15s ease;
             background: transparent !important; box-shadow: none !important;
-            border-bottom: 2px solid transparent; font-size: .92rem;
+            border-bottom: 2px solid transparent; font-size: .93rem;
         }
         div[role="radiogroup"] > label:has(input:checked) {
             color: #0F1B33; border-bottom-color: #2F6FED; font-weight: 600;
             background: transparent !important; box-shadow: none !important;
         }
         div[role="radiogroup"] > label > div:first-child { display: none; }
+
+        /* ---------- Centered chip row ---------- */
+        .chip-row { text-align: center; margin-top: .4rem; }
+        .chip-label {
+            text-align: center; color: #8A93A2; font-size: .8rem;
+            margin: 1.5rem 0 .7rem;
+            text-transform: uppercase; letter-spacing: .08em;
+        }
 
         /* ---------- Cards ---------- */
         div[data-testid="stVerticalBlockBorderWrapper"] {
@@ -123,21 +160,32 @@ def _inject_css():
             padding:.5rem 1rem; border-radius:10px; font-size:.88rem;
         }
         .stButton > button {
-            border-radius: 999px; border: 1px solid #D6DEEC;
-            background: #fff; color: #33415C; font-weight: 600;
-            font-size: .82rem; padding: .35rem .9rem;
+            border-radius: 999px;
+            border: 1px solid #E0E6F2;
+            background: #fff; color: #33415C; font-weight: 500;
+            font-size: .85rem; padding: .5rem 1.1rem;
+            transition: all .18s ease;
+            box-shadow: 0 1px 2px rgba(15,27,51,.04);
         }
         .stButton > button:hover {
             border-color: #2F6FED; color: #2F6FED;
+            box-shadow: 0 4px 14px -4px rgba(47,111,237,.25);
+            transform: translateY(-1px);
         }
         [data-testid="stTextInput"] input {
-            height: 3.2rem; font-size: 1.05rem; border-radius: 14px;
-            border: 1px solid #D9E0EC; padding-left: 1rem;
-            background: #fff;
+            height: 3.6rem; font-size: 1.1rem; border-radius: 16px;
+            border: 1px solid #E0E6F2; padding: 0 1.1rem 0 3rem;
+            background:
+              url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%237B8499' stroke-width='2'><circle cx='11' cy='11' r='7'/><path d='m20 20-3.5-3.5'/></svg>")
+              no-repeat 1.05rem 50% / 18px 18px,
+              #fff;
+            box-shadow: 0 2px 4px rgba(15,27,51,.03);
+            transition: all .18s ease;
         }
         [data-testid="stTextInput"] input:focus {
             border-color: #2F6FED;
-            box-shadow: 0 0 0 4px rgba(47,111,237,.15);
+            box-shadow: 0 0 0 4px rgba(47,111,237,.12),
+                        0 8px 24px -8px rgba(47,111,237,.25);
         }
         [data-testid="stDeployButton"], footer, #MainMenu { display: none; }
         .app-footer {
@@ -166,9 +214,16 @@ def _set_q(value: str):
     st.session_state.q = value
 
 
-# ---------- Header (minimal) ----------
+# ---------- Header ----------
 st.markdown(
-    '<div class="brand">Switch Spec Agent</div>',
+    '<div class="brand">'
+    '<span class="brand-mark">S</span>Switch Spec Agent'
+    '</div>'
+    '<div class="hero-head">'
+    '<h1>Find any switch <span class="accent">in seconds.</span></h1>'
+    '<p>Specs and firmware guidance for every major vendor — '
+    'search a model, or compare two side by side.</p>'
+    '</div>',
     unsafe_allow_html=True,
 )
 
@@ -435,8 +490,8 @@ if mode.endswith("Search specifications"):
     q = st.session_state.q.strip()
 
     if not q:
-        st.write("")
-        st.caption("Try one of these:")
+        st.markdown('<div class="chip-label">Try a model</div>',
+                    unsafe_allow_html=True)
         ex = ["Cisco Catalyst 9300-48P", "Juniper EX4400-48P",
               "Arista 7060CX-32S", "compare C9300-48P vs EX4400-48P"]
         cols = st.columns(len(ex))

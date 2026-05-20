@@ -49,9 +49,15 @@ NVD_API = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 # split between "arubaos" and "aos-cx", Juniper sometimes ships as "junos"
 # vs "junos_os_evolved", Dell switched from "force10" → "networking_os10"
 # → "smartfabric_os10" over the years).
+# Display labels here MUST stay in sync with what other parts of the agent
+# use:
+#   - DEFAULT_GATED_NOS in firmware.py (uses these exact strings)
+#   - the `nos` column in the switches table (so a switch lookup that
+#     returns nos='ArubaOS-CX' resolves to the right advisory bucket)
+# If you rename one of these, also update both of those.
 VENDOR_CPES: list[tuple[str, str, list[str]]] = [
-    # HPE Aruba — AOS-CX (the modern data-center OS) + ArubaOS (campus)
-    ("HPE Aruba",  "AOS-CX",
+    # HPE Aruba — ArubaOS-CX (modern data-center OS), ArubaOS (campus), etc.
+    ("HPE Aruba",  "ArubaOS-CX",
      ["cpe:2.3:o:arubanetworks:aos-cx",
       "cpe:2.3:o:arubanetworks:arubaos-cx"]),
     ("HPE Aruba",  "ArubaOS",
@@ -76,7 +82,7 @@ VENDOR_CPES: list[tuple[str, str, list[str]]] = [
     ("Arista",     "EOS",     ["cpe:2.3:o:arista:eos"]),
 
     # Dell — has shipped under multiple product names over the years
-    ("Dell",       "SmartFabric OS10",
+    ("Dell",       "OS10",
      ["cpe:2.3:o:dell:smartfabric_os10",
       "cpe:2.3:o:dell:networking_os10",
       "cpe:2.3:o:dell:emc_networking_os10"]),
@@ -86,7 +92,7 @@ VENDOR_CPES: list[tuple[str, str, list[str]]] = [
     ("Fortinet",   "FortiSwitch",  ["cpe:2.3:o:fortinet:fortiswitchos",
                                     "cpe:2.3:o:fortinet:fortiswitch"]),
 
-    # NVIDIA Cumulus (some CVEs filed here too — supplements changelog data)
+    # NVIDIA Cumulus (supplements vendor changelog data)
     ("NVIDIA",     "Cumulus Linux",
      ["cpe:2.3:o:nvidia:cumulus_linux",
       "cpe:2.3:o:nvidia:cumulus_networks_cumulus_linux"]),

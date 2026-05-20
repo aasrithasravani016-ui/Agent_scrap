@@ -372,16 +372,24 @@ def _row_to_advisory(row: sqlite3.Row) -> Advisory:
 def list_advisories(
     vendor: str, nos: Optional[str] = None, db_path: Path = DB_PATH,
 ) -> list[Advisory]:
+    """Pull cached CVE rows for a vendor (optionally narrowed by NOS).
+
+    NOS matching is tolerant: switch rows often have heterogeneous nos
+    labels ('OS10 / SONiC', 'ArubaOS-CX' vs 'AOS-CX'), so we expand the
+    requested nos into common variants. The query is built with an IN
+    clause to keep it a single round-trip."""
     if not db_path.exists():
         return []
     con = sqlite3.connect(db_path)
     con.row_factory = sqlite3.Row
-    # Some older DBs may pre-date the table; tolerate that gracefully.
     try:
         if nos:
+            variants = _nos_match_variants(nos)
+            placeholders = ",".join("?" * len(variants))
             rows = con.execute(
-                "SELECT * FROM security_advisories WHERE vendor=? AND nos=?",
-                (vendor, nos),
+                f"SELECT * FROM security_advisories "
+                f"WHERE vendor=? AND nos IN ({placeholders})",
+                (vendor, *variants),
             ).fetchall()
         else:
             rows = con.execute(
@@ -498,13 +506,32 @@ LOGIN_GATED_VENDORS = {
 # vendor's release notes are login-gated (so we can't infer NOS from
 # firmware_versions). Used to pick the right CVE bucket.
 DEFAULT_GATED_NOS = {
-    "HPE Aruba": "AOS-CX",
+    "HPE Aruba": "ArubaOS-CX",
     "Cisco": "IOS-XE",
     "Juniper": "Junos",
     "Arista": "EOS",
-    "Dell": "SmartFabric OS10",
+    "Dell": "OS10",
     "Fortinet": "FortiSwitch",
 }
+
+
+def _nos_match_variants(nos: str) -> list[str]:
+    """Generate plausible nos string variants so a switch row with
+    nos='OS10 / SONiC' still matches advisories stored under 'OS10', and
+    'ArubaOS-CX' matches 'AOS-CX', etc."""
+    if not nos:
+        return []
+    raw = nos.strip()
+    out = {raw, raw.lower()}
+    # Split on " / " for combo strings like "OS10 / SONiC / Cumulus".
+    for part in re.split(r"\s*/\s*", raw):
+        part = part.strip()
+        if part:
+            out.add(part)
+    # Aruba aliases
+    if "aruba" in raw.lower() or "aos" in raw.lower():
+        out.update({"ArubaOS-CX", "AOS-CX", "ArubaOS", "AOS-S"})
+    return [v for v in out if v]
 
 
 @dataclass
