@@ -628,6 +628,61 @@ class SpecAgent:
             ),
         )
 
+    def latest_firmware(self, query: str) -> dict:
+        """Resolve vendor + NOS for a switch query and return the latest
+        known firmware (no current-version diff). Used when the user only
+        types a model — show them what the latest release is."""
+        from firmware import (
+            PUBLIC_FIRMWARE_VENDORS, LOGIN_GATED_VENDORS,
+            latest_firmware as _latest,
+        )
+        # Resolve vendor (prefer DB row, fall back to alias parsing).
+        vendor, nos = None, None
+        spec = self.lookup(query, limit=1)
+        if spec:
+            vendor = spec[0].get("vendor")
+            nos = spec[0].get("nos")
+        if not vendor:
+            vendor = self._extract_vendor(query)
+        if not vendor:
+            return {"status": "no-vendor",
+                    "message": (f"Could not identify vendor from {query!r}. "
+                                "Include the vendor name, e.g. 'Cisco "
+                                "Catalyst 9300-48P'.")}
+
+        canonical = PUBLIC_FIRMWARE_VENDORS.get(vendor)
+        if canonical:
+            nos = canonical
+
+        if not nos:
+            portal = LOGIN_GATED_VENDORS.get(vendor)
+            if portal:
+                return {"status": "login-gated", "vendor": vendor,
+                        "portal_url": portal,
+                        "message": (f"Latest {vendor} firmware is published "
+                                    "behind the vendor's login portal.")}
+            return {"status": "no-source", "vendor": vendor,
+                    "message": (f"No public firmware source available for "
+                                f"{vendor} at $0 / no-LLM.")}
+
+        rec = _latest(vendor, nos)
+        if not rec:
+            return {"status": "no-data", "vendor": vendor, "nos": nos,
+                    "message": (f"No firmware records cached for {vendor} "
+                                f"{nos} yet. Run "
+                                f"`python3 fetch_firmware.py "
+                                f"{vendor.lower()}` to populate.")}
+
+        return {
+            "status": "ok",
+            "vendor": vendor, "nos": nos,
+            "version": rec.version,
+            "release_date": rec.release_date,
+            "train": rec.train,
+            "is_recommended": rec.is_recommended,
+            "release_notes_url": rec.release_notes_url,
+        }
+
     # ---------- Formatting ----------
 
     @staticmethod

@@ -690,6 +690,45 @@ else:
     if fw_model and fw_version:
         advice = agent.firmware_advise(fw_model, fw_version)
         _render_firmware_advice(advice)
+    elif fw_model:
+        # No current version given — just surface the latest known release.
+        latest = agent.latest_firmware(fw_model)
+        s = latest.get("status")
+        with st.container(border=True):
+            if s == "ok":
+                st.markdown('<div class="section-title">'
+                            'Latest known firmware</div>',
+                            unsafe_allow_html=True)
+                c1, c2 = st.columns([1, 1])
+                c1.metric("Version", latest["version"])
+                if latest.get("release_date"):
+                    c2.metric("Released", latest["release_date"])
+                meta = []
+                if latest.get("train"):
+                    meta.append(latest["train"].title())
+                if latest.get("is_recommended"):
+                    meta.append("vendor-recommended")
+                if meta:
+                    st.caption(" · ".join(meta))
+                st.caption(f"{latest['vendor']} · {latest['nos']}")
+                if latest.get("release_notes_url"):
+                    st.markdown(
+                        f'<div class="ds-link" style="margin-top:.4rem">'
+                        f'<a href="{latest["release_notes_url"]}" '
+                        f'target="_blank">Release notes ↗</a></div>',
+                        unsafe_allow_html=True,
+                    )
+            elif s == "login-gated":
+                st.info(latest["message"])
+                if latest.get("portal_url"):
+                    st.markdown(
+                        f'<div class="ds-link" style="margin-top:.4rem">'
+                        f'<a href="{latest["portal_url"]}" '
+                        f'target="_blank">Vendor portal ↗</a></div>',
+                        unsafe_allow_html=True,
+                    )
+            else:  # no-data / no-source / no-vendor
+                st.info(latest["message"])
 
 # ---------- Footer ----------
 st.markdown(
