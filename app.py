@@ -229,7 +229,7 @@ def _render_spec_detail(top: dict):
                   if top.get("port_speed_max_gbps") else "—")
         sc = top.get("switching_capacity_gbps")
         c3.metric("Capacity", f"{sc:g} G" if sc else "—")
-        c4.metric("PoE", top.get("poe_standard") or "None")
+        c4.metric("PoE", top.get("poe_standard") or "—")
 
         c5, c6, c7, c8 = st.columns(4)
         c5.metric("Layer", top.get("layer") or "—")

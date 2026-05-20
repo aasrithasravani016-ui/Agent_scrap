@@ -272,6 +272,7 @@ def guess_vendor(query: str) -> Optional[str]:
         "aruba": "aruba", "hpe": "aruba",
         "dell": "dell", "powerswitch": "dell",
         "nvidia": "nvidia", "mellanox": "nvidia", "spectrum": "nvidia",
+        "connectx": "nvidia", "bluefield": "nvidia", "quantum": "nvidia",
         "extreme": "extreme", "extremeswitching": "extreme",
         "huawei": "huawei", "cloudengine": "huawei",
         "h3c": "h3c",

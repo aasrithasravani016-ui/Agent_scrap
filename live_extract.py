@@ -51,6 +51,15 @@ VENDOR_DOMAINS = {
 }
 
 
+# Known non-switch product families that should NOT be fitted into the
+# switch schema. Each is an unambiguous NIC / DPU / SmartNIC name.
+_NON_SWITCH_RE = re.compile(
+    r"\b(connectx[-\s]?\d+|bluefield[-\s]?\d+|smartnic|"
+    r"intel\s+x(?:5[2-7]|710|722)\d*|qlogic\s+\w+\s+hba)\b",
+    re.IGNORECASE,
+)
+
+
 @dataclass
 class FieldValue:
     value: object
@@ -267,6 +276,15 @@ def live_lookup(
     Returns a SpecRecord (with .confidence dict attached) or None.
     """
     t0 = time.time()
+
+    # Refuse known non-switch product lines (NICs / DPUs) up front. Without
+    # this guard, a query like "ConnectX-6" gets a "switch" record with no
+    # ports / no capacity, vendor inferred from whichever URL happened to
+    # rank first. Better to honest-fail.
+    if _NON_SWITCH_RE.search(query or ""):
+        logger.info("[live_lookup] %r is a NIC/DPU, not a switch", query)
+        return None
+
     vendor = guess_vendor(query)
     remaining = lambda: deadline_sec - (time.time() - t0)
 
@@ -405,12 +423,20 @@ def _best_model_name(query: str, extractions: dict[str, dict[str, str]]) -> str:
 
 
 def _vendor_from_sources(extractions: dict[str, dict[str, str]]) -> Optional[str]:
+    """Pick the vendor from the highest-confidence source whose domain
+    is recognised. Confidence-weighted — a Cisco doc that just *mentions*
+    a competitor no longer wins over an NVIDIA PDF in the same fetch."""
+    best = (None, -1.0)
     for url in extractions:
+        conf = source_confidence(url)
+        if conf <= best[1]:
+            continue
         domain = urlparse(url).netloc.replace("www.", "")
         for vd in VENDOR_DOMAINS:
             if vd in domain:
-                return vd.split(".")[0]
-    return None
+                best = (vd.split(".")[0], conf)
+                break
+    return best[0]
 
 
 def _best_datasheet_url(pages: dict[str, bytes]) -> Optional[str]:
