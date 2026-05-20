@@ -199,6 +199,180 @@ def _chips(features, limit=24):
     st.markdown(html, unsafe_allow_html=True)
 
 
+# ---- Meaningful sectioning -------------------------------------------------
+# Group schema fields and route the free-form `extra_specs` into the section
+# they actually belong to, so the user sees a structured product page instead
+# of either 8 em-dash metric cards or a 73-row dump.
+_SECTIONS = [
+    ("Ports & connectivity",
+     ["port_count", "port_speed_max_gbps", "port_config", "uplink_config"],
+     ["device interfaces", "data transfer rates", "interfaces",
+      "sfp", "qsfp", "copper", "fiber", "10/100", "gigabit"]),
+    ("Performance",
+     ["switching_capacity_gbps", "forwarding_rate_mpps", "buffer_mb",
+      "latency_ns", "mac_table_size"],
+     ["switching capacity", "switching bandwidth", "switching fabric",
+      "forwarding", "throughput", "mac address table", "mac table",
+      "buffer", "ram buffer", "packet filtering", "latency", "jumbo",
+      "transmission method", "queue", "store-and-forward"]),
+    ("PoE & power",
+     ["poe_standard", "poe_budget_w", "power_typical_w", "power_max_w"],
+     ["poe ", "poe+", "poe-", "voltage", "current", "wattage",
+      "psu", "consumption", "input power", "power supply"]),
+    ("Layer & features",
+     ["layer", "features", "use_case"],
+     ["routing", "vlan", "stp", "spanning tree", "protocols",
+      "sdn", "controller", "advanced features"]),
+    ("Software & lifecycle",
+     ["nos", "status", "family", "sku"],
+     ["network os", "operating system", "management", "license",
+      "support", "warranty", "eos", "eol"]),
+    ("Physical & environment",
+     ["rack_units"],
+     ["dimensions", "weight", "size", "mounting", "form factor",
+      "temperature", "humidity", "airflow", "cooling", "fans",
+      "mtbf", "altitude", "operating", "storage", "led", "indicator"]),
+    ("Standards & compliance",
+     [],
+     ["standards", "ieee 802", "802.3", "802.1", "certification",
+      "compliance", "emi", "emc", "safety", "fcc", "rohs", " ce ", "vcci"]),
+]
+
+
+def _route_extras(extras: dict) -> tuple[dict, list]:
+    """Assign each extra key to the first section that matches it."""
+    claimed = {name: [] for name, _, _ in _SECTIONS}
+    unclaimed = []
+    for k, v in extras.items():
+        kl = (k or "").lower()
+        for name, _, kws in _SECTIONS:
+            if any(kw in kl for kw in kws):
+                claimed[name].append((k, v))
+                break
+        else:
+            unclaimed.append((k, v))
+    return claimed, unclaimed
+
+
+def _format_schema_value(k: str, v):
+    if isinstance(v, list):
+        return ", ".join(str(x) for x in v) if v else None
+    if k == "switching_capacity_gbps" and v:
+        try:
+            v = float(v)
+            return f"{v/1000:.2f} Tbps" if v >= 1000 else f"{v:g} Gbps"
+        except (TypeError, ValueError):
+            pass
+    if k == "forwarding_rate_mpps" and v:
+        try:
+            return f"{float(v):g} Mpps"
+        except (TypeError, ValueError):
+            pass
+    if k == "buffer_mb" and v:
+        try:
+            return f"{float(v):g} MB"
+        except (TypeError, ValueError):
+            pass
+    if k == "poe_budget_w" and v:
+        return f"{v} W"
+    if k == "rack_units" and v:
+        return f"{v}U"
+    return str(v) if v not in (None, "") else None
+
+
+def _section_rows(top: dict, schema_keys: list, extra_pairs: list) -> list:
+    rows = []
+    for k in schema_keys:
+        v = top.get(k)
+        if v in (None, "", "[]", []):
+            continue
+        formatted = _format_schema_value(k, v)
+        if not formatted:
+            continue
+        rows.append({"Spec": LABELS.get(k, k.replace("_", " ").title()),
+                     "Value": formatted})
+    for k, v in extra_pairs:
+        rows.append({"Spec": k, "Value": v})
+    return rows
+
+
+def _build_summary(top: dict) -> str:
+    parts = []
+    pc = top.get("port_count")
+    ms = top.get("port_speed_max_gbps")
+    if pc:
+        parts.append(f"{pc} × {ms}G" if ms else f"{pc}-port")
+    if top.get("use_case"):
+        parts.append(top["use_case"])
+    parts.append("switch")
+    if top.get("layer"):
+        parts.append(top["layer"])
+    if top.get("poe_standard"):
+        p = top["poe_standard"]
+        if top.get("poe_budget_w"):
+            p = f"{p} {top['poe_budget_w']} W"
+        parts.append(p)
+    sc = top.get("switching_capacity_gbps")
+    if sc:
+        try:
+            sc = float(sc)
+            cap = f"{sc/1000:.1f} Tbps" if sc >= 1000 else f"{sc:g} Gbps"
+            parts.append(f"{cap} switching")
+        except (TypeError, ValueError):
+            pass
+    return " · ".join(parts)
+
+
+def _headline_metrics(top: dict) -> list:
+    out = []
+    if top.get("port_count"):
+        out.append(("Ports", str(top["port_count"])))
+    sc = top.get("switching_capacity_gbps")
+    if sc:
+        try:
+            sc = float(sc)
+            out.append(("Capacity",
+                        f"{sc/1000:.1f} Tbps" if sc >= 1000 else f"{sc:g} Gbps"))
+        except (TypeError, ValueError):
+            pass
+    if top.get("poe_standard"):
+        v = top["poe_standard"]
+        if top.get("poe_budget_w"):
+            v = f"{v} · {top['poe_budget_w']} W"
+        out.append(("PoE", v))
+    if top.get("layer"):
+        out.append(("Layer", top["layer"]))
+    if len(out) < 4 and top.get("nos"):
+        out.append(("Network OS", top["nos"]))
+    if len(out) < 4 and top.get("use_case"):
+        out.append(("Role", top["use_case"]))
+    return out[:4]
+
+
+def _render_spec_sections(top: dict):
+    """Render every populated section as its own panel; route extras into
+    them; anything left goes in a collapsed catch-all."""
+    extras = top.get("extra_specs") or {}
+    if not isinstance(extras, dict):
+        extras = {}
+    claimed, unclaimed = _route_extras(extras)
+    rendered = 0
+    for name, schema_keys, _ in _SECTIONS:
+        rows = _section_rows(top, schema_keys, claimed[name])
+        if not rows:
+            continue
+        st.markdown(f'<div class="section-title">{name}</div>',
+                    unsafe_allow_html=True)
+        st.table(rows)
+        rendered += 1
+    if unclaimed:
+        with st.expander(f"Other datasheet details ({len(unclaimed)})"):
+            st.table([{"Spec": k, "Value": v} for k, v in unclaimed])
+    if rendered == 0 and not unclaimed:
+        st.caption("No structured specifications captured for this model "
+                   "— see the datasheet link above.")
+
+
 def _render_spec_detail(top: dict):
     with st.container(border=True):
         has_img = bool(top.get("image_url"))
@@ -218,60 +392,37 @@ def _render_spec_detail(top: dict):
             unsafe_allow_html=True,
         )
         head.markdown(f"### {top.get('model','')}")
-        if top.get("use_case"):
-            head.caption(f"Typical use · {top['use_case']}")
+        # One-line plain-English summary built from real data only.
+        summary = _build_summary(top)
+        if summary:
+            head.caption(summary)
 
         st.write("")
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Ports", top.get("port_count") or "—")
-        c2.metric("Max speed",
-                  f"{top.get('port_speed_max_gbps')} G"
-                  if top.get("port_speed_max_gbps") else "—")
-        sc = top.get("switching_capacity_gbps")
-        c3.metric("Capacity", f"{sc:g} G" if sc else "—")
-        c4.metric("PoE", top.get("poe_standard") or "—")
 
-        c5, c6, c7, c8 = st.columns(4)
-        c5.metric("Layer", top.get("layer") or "—")
-        c6.metric("Rack U", top.get("rack_units") or "—")
-        fr = top.get("forwarding_rate_mpps")
-        c7.metric("Fwd rate", f"{fr:g} M" if fr else "—")
-        c8.metric("Network OS", top.get("nos") or "—")
+        # Headline metrics — only the 3-4 most-important populated ones,
+        # never a row of em-dashes.
+        metrics = _headline_metrics(top)
+        if metrics:
+            cols = st.columns(len(metrics))
+            for col, (label, value) in zip(cols, metrics):
+                col.metric(label, value)
 
-        if top.get("port_config"):
-            st.write(f"**Port configuration** · {top['port_config']}")
-        if top.get("uplink_config"):
-            st.write(f"**Uplinks** · {top['uplink_config']}")
         if top.get("features"):
             st.markdown('<div class="section-title">Features</div>',
                         unsafe_allow_html=True)
             _chips(top["features"])
+
         if top.get("datasheet_url"):
             st.markdown(
                 f'<div class="ds-link"><a href="{top["datasheet_url"]}" '
                 f'target="_blank">View datasheet ↗</a></div>',
                 unsafe_allow_html=True,
             )
-        with st.expander("Full specification"):
-            rows = [
-                {"Spec": lbl,
-                 "Value": (", ".join(top[k]) if isinstance(top.get(k), list)
-                           else top.get(k))}
-                for k, lbl in LABELS.items()
-                if k not in ("image_url", "extra_specs")
-                and top.get(k) not in (None, "")
-            ]
-            st.table(rows)
 
-        extras = top.get("extra_specs") or {}
-        if isinstance(extras, dict) and extras:
-            with st.expander(
-                f"Additional details from datasheet ({len(extras)})",
-                expanded=True,
-            ):
-                st.caption("Extra fields the datasheet contains "
-                           "but the structured schema doesn't cover.")
-                st.table([{"Spec": k, "Value": v} for k, v in extras.items()])
+        # Sectioned rendering — each panel shown only if it has content.
+        # Free-form datasheet extras are routed into the section they
+        # belong to; the rest go in a collapsed "Other details".
+        _render_spec_sections(top)
 
 
 # ============================================================
