@@ -56,6 +56,19 @@ VENDOR_DOMAINS = {
     "edgecore": ["edge-core.com"],
 }
 
+# Auto-extend with every vendor + domain from vendors.json.
+try:
+    from vendor_registry import by_canonical as _vr_by_name
+    for _entry in _vr_by_name().values():
+        _site = (_entry.get("website") or "").replace("https://", "").replace("http://", "").replace("www.", "")
+        if _site:
+            for _a in [_entry.get("name", "")] + (_entry.get("aliases") or []):
+                _key = _a.strip().lower()
+                if _key and _key not in VENDOR_DOMAINS:
+                    VENDOR_DOMAINS[_key] = [_site]
+except Exception:  # pragma: no cover
+    pass
+
 
 SEARCH_HEADERS = {
     "User-Agent": (
@@ -290,7 +303,17 @@ def guess_vendor(query: str) -> Optional[str]:
         "cambium": "cambium",
         "edgecore": "edgecore", "edge-core": "edgecore",
     }
-    for kw, vendor in aliases.items():
+    # Merge in every alias from vendors.json (134 vendors) so guess_vendor
+    # recognises the long tail (Westermo, Hirschmann, Pluribus, Fujitsu, NEC,
+    # Tejas, Sophos, Tenda, WatchGuard, ...) — not just the hardcoded ~20.
+    try:
+        from vendor_registry import aliases as _vr_aliases
+        for _alias, _name in _vr_aliases().items():
+            aliases.setdefault(_alias, _name.lower())
+    except Exception:  # pragma: no cover
+        pass
+    # Longest alias first so "tp-link" beats "tp"
+    for kw in sorted(aliases, key=len, reverse=True):
         if kw in q:
-            return vendor
+            return aliases[kw]
     return None

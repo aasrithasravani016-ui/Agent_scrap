@@ -501,6 +501,16 @@ LOGIN_GATED_VENDORS = {
     "Dell": "https://www.dell.com/support",  # partially public
     "Fortinet": "https://support.fortinet.com",
 }
+# Merge in additional login-gated portals known to the registry
+# (Huawei, H3C, Lenovo, Tejas, ZTE, NEC, Fujitsu, ALE, RUCKUS, Extreme,
+# Ciena, Nokia). These don't publish public release notes but do have
+# vendor support portals — surface the URL instead of "no source".
+try:
+    from vendor_registry import login_gated as _vr_gated
+    for _name, _url in _vr_gated().items():
+        LOGIN_GATED_VENDORS.setdefault(_name, _url)
+except Exception:  # pragma: no cover
+    pass
 
 # vendor -> default NOS used when caller didn't specify one and the
 # vendor's release notes are login-gated (so we can't infer NOS from

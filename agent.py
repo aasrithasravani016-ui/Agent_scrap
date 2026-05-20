@@ -50,6 +50,15 @@ VENDOR_ALIASES = {
     "tpe-": "TRENDnet",
 }
 
+# Merge in every alias from the canonical vendor registry (vendors.json).
+# Hardcoded entries above win on conflict so existing behaviour is preserved.
+try:
+    from vendor_registry import aliases as _vr_aliases
+    for _a, _name in _vr_aliases().items():
+        VENDOR_ALIASES.setdefault(_a, _name)
+except Exception:  # pragma: no cover
+    pass
+
 # Spec field labels for pretty output
 LABELS = {
     "vendor": "Vendor",

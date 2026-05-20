@@ -50,6 +50,13 @@ VENDOR_DOMAINS = {
     "allied-telesis.com", "alliedtelesis.com",
     "trendnet.com",
 }
+# Extend with every domain from vendors.json so vendor inference works
+# for the whole 134-entry registry, not just hardcoded names.
+try:
+    from vendor_registry import domains as _vr_domains
+    VENDOR_DOMAINS |= _vr_domains()
+except Exception:  # pragma: no cover
+    pass
 
 
 # Known non-switch product families that should NOT be fitted into the
