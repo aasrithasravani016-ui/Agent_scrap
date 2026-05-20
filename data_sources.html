@@ -2,158 +2,249 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Switch Spec Agent — Overview</title>
+<title>Switch Spec Agent — How it works</title>
 <style>
   body {
     margin: 0; background: #fff; color: #1a1a1a;
     font: 15px/1.6 -apple-system, "Segoe UI", system-ui, sans-serif;
   }
-  .wrap { max-width: 820px; margin: 0 auto; padding: 36px 28px 60px; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 36px 28px 60px; }
   h1 { font-size: 24px; margin: 0 0 4px; }
-  h2 { font-size: 17px; margin: 28px 0 10px; padding-bottom: 4px; border-bottom: 1px solid #e5e5e5; }
+  h2 { font-size: 18px; margin: 30px 0 10px; padding-bottom: 4px; border-bottom: 1px solid #e5e5e5; }
+  h3 { font-size: 15px; margin: 14px 0 6px; color: #2b5fb5; }
   .sub { color: #6a6a6a; font-size: 13px; margin-bottom: 20px; }
   .kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin: 18px 0 6px; }
   .kpi { border: 1px solid #e5e5e5; border-radius: 6px; padding: 10px 12px; }
   .kpi .n { font-size: 20px; font-weight: 600; }
   .kpi .l { color: #6a6a6a; font-size: 12px; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .flow {
+    border: 1px solid #e5e5e5; border-radius: 8px;
+    padding: 16px 20px; margin: 10px 0 18px; background: #fafafa;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 6px; }
   th, td { padding: 8px 10px; border-bottom: 1px solid #eee; text-align: left; vertical-align: top; }
   th { background: #f7f7f7; font-weight: 600; }
-  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; }
-  .box { border: 1px solid #e5e5e5; border-radius: 6px; padding: 12px 14px; }
-  .box h3 { margin: 0 0 6px; font-size: 14px; }
-  ul { margin: 4px 0 0 18px; padding: 0; }
-  li { margin: 4px 0; }
   .ok { color: #1f7a3a; font-weight: 600; }
   .bad { color: #a83232; font-weight: 600; }
   .mid { color: #a8741a; font-weight: 600; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .p-v1 { background: #e8eef9; color: #2b5fb5; }
+  .p-v2 { background: #efe6f7; color: #5b2b8a; }
+  ul { margin: 4px 0 0 18px; padding: 0; }
+  li { margin: 4px 0; }
   .note { color: #6a6a6a; font-size: 13px; font-style: italic; }
+  code, .tool { background: #f3f3f3; padding: 1px 6px; border-radius: 3px; font-size: 13px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
 </style>
 </head>
 <body>
 <div class="wrap">
 
 <h1>Switch Spec Agent</h1>
-<div class="sub">How it works · what we cover · what's blocking us</div>
+<div class="sub">Two things we built · how each one works · which tools we use · what's blocking us</div>
 
 <div class="kpis">
   <div class="kpi"><div class="n">134</div><div class="l">Vendors we know</div></div>
-  <div class="kpi"><div class="n">18</div><div class="l">Vendors we auto-fetch</div></div>
-  <div class="kpi"><div class="n">~237</div><div class="l">Switch models saved</div></div>
-  <div class="kpi"><div class="n">2,728</div><div class="l">Known security issues</div></div>
+  <div class="kpi"><div class="n">~237</div><div class="l">Switch specs saved</div></div>
+  <div class="kpi"><div class="n">127</div><div class="l">Firmware versions saved</div></div>
+  <div class="kpi"><div class="n">2,728</div><div class="l">Security issues tracked</div></div>
 </div>
 
-<h2>How it works (in simple steps)</h2>
-<p>When someone asks the agent about a switch, it tries <b>three places, in this order</b>:</p>
-<ol>
-  <li><b>Our own saved file</b> — like a notebook we already filled in. Fastest.</li>
-  <li><b>Vendor websites</b> — if the answer isn't in the notebook, the agent goes to the maker's website (Cisco, MikroTik, etc.) and reads the public product page.</li>
-  <li><b>Web search</b> — if even the vendor page doesn't have it, the agent does a normal Google-style search and reads the first good result.</li>
-</ol>
-<p>The whole thing runs at <b>zero cost</b>. No paid services, no AI charges. It just reads public web pages.</p>
-
-<h2>Which vendors we cover</h2>
-<table>
-  <thead><tr><th>Working well</th><th>Working partly</th><th>Blocked by the vendor</th></tr></thead>
-  <tbody>
-    <tr>
-      <td class="ok">MikroTik, NETGEAR, Cisco (public pages), Arista, NVIDIA, TP-Link, Lenovo, Ubiquiti</td>
-      <td class="mid">Huawei, H3C, Ruijie, Edgecore, Zyxel, Extreme, Fortinet</td>
-      <td class="bad">HPE Aruba, Dell, Juniper</td>
-    </tr>
-  </tbody>
-</table>
-<p class="note">"Blocked" means the vendor's website refuses to talk to our agent — like a bouncer at a door who only lets human visitors in.</p>
-
-<h2>What kind of data we collect</h2>
-<table>
-  <thead><tr><th>Type of data</th><th>Where it comes from</th><th>How much we have</th></tr></thead>
-  <tbody>
-    <tr>
-      <td>Switch specs (ports, speed, power…)</td>
-      <td>Vendor product pages</td>
-      <td>~237 models</td>
-    </tr>
-    <tr>
-      <td>Firmware / software versions</td>
-      <td>Public release-note pages of MikroTik, NVIDIA, Ubiquiti</td>
-      <td>127 versions</td>
-    </tr>
-    <tr>
-      <td>Known security problems (CVEs)</td>
-      <td>The free U.S. government security database (NVD)</td>
-      <td>2,728 issues across 12 vendors</td>
-    </tr>
-    <tr>
-      <td>"This one is being attacked right now" flag</td>
-      <td>The free U.S. government "actively exploited" list (CISA)</td>
-      <td>68 issues flagged</td>
-    </tr>
-  </tbody>
-</table>
-<p class="note">
-  CVE = a numbered security bug, like a license plate for vulnerabilities.
-  NVD and CISA are both free, public, government-run lists — no login, no fees.
+<p>
+  We built <b>two separate features</b>. They both answer questions about
+  network switches, but they look up different things in different places.
 </p>
+
+<!-- ─────────────────────────── V1 ─────────────────────────── -->
+
+<h2><span class="pill p-v1">Version 1</span> &nbsp; Specifications</h2>
+<p>
+  Someone asks: <i>"What are the specs of the Cisco Catalyst 9300?"</i> —
+  things like port count, speed, power, layer, etc.
+</p>
+
+<div class="flow">
+  <h3>Step 1 — Look in our own saved file first</h3>
+  <p>
+    We keep a small local database called <span class="tool">switches.db</span>
+    (it's a SQLite file — basically a tiny self-contained Excel for code).
+    If the model is there, we answer in about <b>1 millisecond</b>. Done.
+  </p>
+
+  <h3>Step 2 — If not saved, go to the vendor's website</h3>
+  <p>
+    We open the vendor's public product page directly — for example
+    <span class="tool">mikrotik.com</span>, <span class="tool">cisco.com</span>,
+    <span class="tool">arista.com</span>, <span class="tool">netgear.com</span>,
+    <span class="tool">nvidia.com</span>, <span class="tool">ui.com</span> —
+    using the Python <span class="tool">requests</span> library, read the
+    HTML, pull out the specs with <span class="tool">BeautifulSoup</span>
+    (HTML parser) and <span class="tool">pdfplumber</span> / <span class="tool">PyMuPDF</span>
+    (PDF parsers), and save them. Next time it's instant.
+  </p>
+
+  <h3>Step 3 — If the vendor blocks us, do a web search</h3>
+  <p>
+    Some vendors (Aruba, Dell, Juniper) refuse our agent at the door
+    (their security system, Akamai, returns a "403 Forbidden" error). So
+    instead we do a normal web search through
+    <span class="tool">Startpage</span>, then
+    <span class="tool">Mojeek</span>, then
+    <span class="tool">DuckDuckGo</span> as a last resort. We open the first
+    good result — usually the official datasheet on the vendor's own site
+    or a reseller's page — and read it the same way.
+  </p>
+  <p class="note">
+    Why three? Startpage and Mojeek are independent search engines that
+    don't track us and rarely block automated requests. DuckDuckGo started
+    rate-limiting us, so we moved it to the bottom of the list.
+  </p>
+
+  <h3>Step 4 — If we still can't get full specs, give the link</h3>
+  <p>
+    If the datasheet is messy (image-based table, weird PDF, JavaScript
+    page), we don't make up numbers. We <b>honestly say</b>:
+    <i>"Here is the official datasheet link and the few features we could
+    read — please open the link for the rest."</i>
+  </p>
+</div>
+
+<!-- ─────────────────────────── V2 ─────────────────────────── -->
+
+<h2><span class="pill p-v2">Version 2</span> &nbsp; Firmware &amp; Security</h2>
+<p>
+  Someone asks: <i>"What's the latest firmware for Cisco IOS-XE? Any known
+  security issues?"</i>
+</p>
+
+<div class="flow">
+  <h3>Step 1 — Look in our firmware list first</h3>
+  <p>
+    For vendors who publish their firmware notes openly, we already
+    collected 127 versions directly from their public download pages:
+  </p>
+  <ul>
+    <li><b>MikroTik RouterOS</b> from <span class="tool">upgrade.mikrotik.com/routeros</span> (plain-text changelog files).</li>
+    <li><b>NVIDIA Cumulus Linux</b> from <span class="tool">docs.nvidia.com</span> + GitHub release notes.</li>
+    <li><b>Ubiquiti UniFi</b> from their firmware API <span class="tool">fw-update.ui.com/api/firmware</span> + <span class="tool">community.ui.com/releases</span>.</li>
+  </ul>
+  <p>We show the latest version, the release date, and what was fixed.</p>
+
+  <h3>Step 2 — If the vendor hides firmware behind a login</h3>
+  <p>
+    Big vendors like <b>Cisco, Juniper, HPE Aruba, Dell</b> put their
+    firmware download pages behind a customer login portal
+    (<span class="tool">software.cisco.com</span>,
+    <span class="tool">support.juniper.net</span>,
+    <span class="tool">asp.arubanetworks.com</span>,
+    <span class="tool">dell.com/support</span>). We don't have logins for
+    these, so we can't reach them. Instead of giving up, we do the next
+    best thing:
+  </p>
+
+  <h3>Step 3 — Pull public security issues from NIST NVD</h3>
+  <p>
+    <span class="tool">NIST NVD</span> stands for the U.S. National
+    Institute of Standards and Technology — National Vulnerability
+    Database. It is the U.S. government's <b>free, public security
+    database</b> that lists every known security bug (called a "CVE")
+    for every vendor, including Cisco, Juniper, Aruba and the rest.
+    No login, no fee.
+  </p>
+  <p>
+    We call its API at
+    <span class="tool">services.nvd.nist.gov/rest/json/cves/2.0</span>
+    and store the results in our database. So far we have 2,728 issues
+    across 12 vendors. For each one we show:
+  </p>
+  <ul>
+    <li>Which security bug affects this vendor (the CVE number, like a license-plate ID).</li>
+    <li>How serious it is — the <b>CVSS score</b> (Critical / High / Medium / Low).</li>
+    <li>Which firmware version finally fixed it (so the user knows what to upgrade to).</li>
+    <li>A red flag for the <b>68 bugs</b> that the U.S. cybersecurity agency <span class="tool">CISA</span> says are being actively attacked right now — pulled from CISA's <b>Known Exploited Vulnerabilities (KEV) catalog</b>.</li>
+  </ul>
+
+  <h3>Step 4 — Be honest about what we don't have</h3>
+  <p>
+    We tell the user clearly: <i>"We don't have the latest firmware
+    version number for this vendor because their downloads need a login.
+    But here are the public security issues you should know about, and
+    here is the official login link if you want the full release notes."</i>
+  </p>
+</div>
+
+<!-- ─────────────────────────── COVERAGE ─────────────────────────── -->
+
+<h2>Which vendors each version covers</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Vendor</th>
+      <th>Specs (V1)</th>
+      <th>Firmware (V2)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>MikroTik</td><td class="ok">Full (from mikrotik.com)</td><td class="ok">Full (from upgrade.mikrotik.com)</td></tr>
+    <tr><td>NVIDIA</td><td class="ok">Full (from nvidia.com)</td><td class="ok">Full (from docs.nvidia.com)</td></tr>
+    <tr><td>Ubiquiti</td><td class="ok">Full (from ui.com)</td><td class="ok">Full (from fw-update.ui.com API)</td></tr>
+    <tr><td>NETGEAR, Arista, TP-Link, Lenovo, Cisco (public)</td><td class="ok">Full</td><td class="mid">CVEs only (from NIST NVD)</td></tr>
+    <tr><td>Huawei, H3C, Ruijie, Edgecore, Zyxel, Extreme, Fortinet</td><td class="mid">Partial</td><td class="mid">CVEs only (from NIST NVD)</td></tr>
+    <tr><td>HPE Aruba, Dell, Juniper</td><td class="bad">Blocked → search via Startpage/Mojeek</td><td class="mid">CVEs only (from NIST NVD)</td></tr>
+  </tbody>
+</table>
+
+<!-- ─────────────────────────── PROBLEMS ─────────────────────────── -->
 
 <h2>Problems we hit, and how we solved them</h2>
 <table>
   <thead><tr><th>The problem</th><th>What we did</th></tr></thead>
   <tbody>
     <tr>
-      <td>Big vendors (Aruba, Dell, Juniper) <b>block automated visitors</b> from their websites. Our agent gets turned away at the door.</td>
-      <td>We stopped trying to walk through their front door. Instead we pull the security data from the <b>free U.S. government database</b>, which lists the same issues without any login.</td>
+      <td>Big vendors (HPE Aruba, Dell, Juniper) use a service called <b>Akamai</b> that <b>blocks automated visitors</b> — we get a "403 Forbidden" error.</td>
+      <td>For specs, we fall back to <b>Startpage / Mojeek</b> web search and read the first good result. For firmware, we use the free <b>NIST NVD</b> security database instead.</td>
     </tr>
     <tr>
-      <td>TP-Link's web pages load empty for our agent because they need a browser to "draw" the page.</td>
-      <td>We found their <b>sitemap</b> (a hidden text list of every page on their site) and read it directly. No drawing needed.</td>
+      <td>TP-Link product pages load <b>empty</b> because they need a real browser to "draw" them (JavaScript-rendered).</td>
+      <td>Read their <b>sitemap.xml</b> (a hidden text list of every page on tp-link.com), then fetch the static product pages directly.</td>
     </tr>
     <tr>
-      <td>The popular Google-style search engine we first used started <b>refusing our requests</b> after a few tries.</td>
-      <td>We added <b>two backup search engines</b>. If the first one says no, we try the second, then the third.</td>
+      <td><b>DuckDuckGo</b> search started <b>refusing our requests</b> (returning HTTP 202).</td>
+      <td>Added <b>Startpage</b> and <b>Mojeek</b> as the first two engines. DuckDuckGo is now only a last resort.</td>
     </tr>
     <tr>
-      <td>The government security database limits us to <b>5 requests every 30 seconds</b>.</td>
-      <td>We added a small <b>wait timer</b> between requests so we never go over the limit.</td>
+      <td><b>NIST NVD</b> only allows <b>5 requests every 30 seconds</b> without an API key.</td>
+      <td>Added a <b>6.5-second wait</b> between requests, plus an option to top-up one vendor at a time (e.g. <code>--nvd-vendor cisco</code>).</td>
     </tr>
     <tr>
-      <td>The web app sometimes crashed when many people used it at once (database thread errors).</td>
-      <td>Changed one database setting that allows it to be used by multiple users at the same time.</td>
+      <td>Our Streamlit web app crashed under multiple users because <b>SQLite blocks cross-thread access</b> by default.</td>
+      <td>Opened the database with <span class="tool">check_same_thread=False</span> and cached the agent with <span class="tool">@st.cache_resource</span>.</td>
     </tr>
     <tr>
-      <td>Rebuilding the database used to <b>wipe out all our scraped data</b>.</td>
-      <td>Now we update the database in place instead of rebuilding from scratch — like editing a spreadsheet instead of deleting it and starting over.</td>
+      <td>Rebuilding the database from seed used to <b>wipe out</b> all 237 scraped models.</td>
+      <td>Switched to <b>in-place migrations</b> (<code>ALTER TABLE</code> / <code>CREATE TABLE IF NOT EXISTS</code>) — like editing a spreadsheet instead of deleting it.</td>
     </tr>
   </tbody>
 </table>
 
-<h2>What we honestly cannot do</h2>
+<!-- ─────────────────────────── HONEST LIMITS ─────────────────────────── -->
+
+<h2>What we honestly cannot do (yet)</h2>
 <ul>
-  <li><b>We can't get full release notes from "members-only" websites.</b> Cisco, Aruba, Juniper, Dell, and Extreme hide the detailed update notes behind a login screen. We can only see the security issue list, not the full notes.</li>
-  <li><b>We can't read messy PDF datasheets perfectly.</b> Some vendors put their specs inside images or weird layouts. Without an AI to "read" them, we can only give the link and a few features.</li>
-  <li><b>There is no single complete list of every switch in the world.</b> We are stitching together many sources. Some vendors and old models will always be missing.</li>
-  <li><b>Some Chinese vendors</b> (Huawei, H3C, Ruijie) put much more detail on their Chinese pages than their English pages. We only read the English ones.</li>
+  <li><b>We can't get the actual latest firmware version</b> for Cisco, Juniper, HPE Aruba, Dell — those downloads are behind a login on <span class="tool">software.cisco.com</span> etc. We can show the CVE list, but not the version number.</li>
+  <li><b>We can't read messy PDF datasheets perfectly.</b> Without an LLM (AI) to "read" images and weird layouts, we sometimes give only the link and a few features.</li>
+  <li><b>No single complete list of every switch in the world exists.</b> We stitch many sources together. Some old or niche models will always be missing.</li>
+  <li><b>Chinese vendors</b> (Huawei, H3C, Ruijie) have much richer data on their Chinese pages than the English pages we read.</li>
 </ul>
 
-<h2>What's still missing / what to do next</h2>
-<div class="row">
-  <div class="box">
-    <h3>Coverage gaps</h3>
-    <ul>
-      <li>No firmware data yet for Cisco, Juniper, Arista, Aruba — only security issues.</li>
-      <li>About <b>115 vendors</b> we know about have <b>no auto-fetch</b> set up yet (mostly small / industrial / niche brands).</li>
-      <li>Huawei, H3C, Ruijie data is thin.</li>
-    </ul>
-  </div>
-  <div class="box">
-    <h3>Quality gaps</h3>
-    <ul>
-      <li>Many saved switches only have a link to the datasheet, not all the numbers.</li>
-      <li>No "end-of-life" / "end-of-support" dates yet.</li>
-      <li>Nothing runs on a schedule — we re-fetch by hand.</li>
-    </ul>
-  </div>
-</div>
+<!-- ─────────────────────────── NEXT ─────────────────────────── -->
+
+<h2>What's missing / what to do next</h2>
+<ul>
+  <li>About <b>115 vendors</b> we know about have no auto-fetch set up yet (mostly small / industrial / niche brands).</li>
+  <li>No firmware version data yet for Cisco, Juniper, Arista, Aruba — only CVE data from NVD.</li>
+  <li>No "end-of-life" / "end-of-support" dates yet.</li>
+  <li>Nothing runs on a schedule — we re-fetch by hand. Could be put on a daily auto-run (e.g. GitHub Actions, cron).</li>
+</ul>
 
 <div class="sub" style="margin-top:28px">
   Project folder: <span style="font-family:monospace">/Users/aasritha/agent/switch-spec-agent</span> · 2026-05-20
