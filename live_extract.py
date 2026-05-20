@@ -114,12 +114,12 @@ def fetch_parallel(urls: list[str], timeout: int = 5, max_workers: int = 4) -> d
 # ---------------------------------------------------------------------------
 # Parsing one source
 # ---------------------------------------------------------------------------
-def parse_source(url: str, content: bytes) -> dict[str, str]:
+def parse_source(url: str, content: bytes, model_hint: str = "") -> dict[str, str]:
     if not content:
         return {}
     is_pdf = url.lower().endswith(".pdf") or content[:4] == b"%PDF"
     if is_pdf:
-        return _parse_pdf(content)
+        return _parse_pdf(content, model_hint=model_hint)
     try:
         html = content.decode("utf-8", errors="replace")
     except Exception:
@@ -127,8 +127,41 @@ def parse_source(url: str, content: bytes) -> dict[str, str]:
     return extract_spec_tables(html)
 
 
-def _parse_pdf(pdf_bytes: bytes) -> dict[str, str]:
-    """Better PDF parsing - tables first, text patterns as supplement."""
+# SKU-like header cells, e.g. "DES-1008C", "FortiSwitch-448E", "C9300-48P"
+_SKU_LIKE = re.compile(r"^[A-Za-z]{1,}[\-_]?\d+[A-Za-z0-9\-_+]*$")
+
+
+def _is_header_row(cells: list[str]) -> bool:
+    """A spec table row whose value columns are model SKUs (not values)."""
+    return sum(1 for c in cells[1:] if _SKU_LIKE.match(c.strip())) >= 1
+
+
+def _pick_model_column(table: list[list[str]], model_hint: str) -> int | None:
+    """In a multi-model comparison table, return the column index whose
+    header cell matches `model_hint`. None if no header / no match."""
+    if not model_hint:
+        return None
+    norm = re.sub(r"[^a-z0-9]", "", model_hint.lower())
+    for row in (table or [])[:10]:
+        if not row:
+            continue
+        cells = [(c or "").strip() for c in row]
+        if not _is_header_row(cells):
+            continue
+        for i, c in enumerate(cells[1:], start=1):
+            cn = re.sub(r"[^a-z0-9]", "", c.lower())
+            if cn and (cn in norm or norm in cn):
+                return i
+    return None
+
+
+def _parse_pdf(pdf_bytes: bytes, model_hint: str = "") -> dict[str, str]:
+    """PDF parsing - tables first, text patterns as supplement.
+
+    When `model_hint` matches a column header in a multi-model comparison
+    table, that column's values are used (fixes the wrong-column bug where
+    a DES-1008C query returned DES-1005C's switching capacity).
+    """
     out: dict[str, str] = {}
 
     if HAS_PDFPLUMBER:
@@ -136,17 +169,19 @@ def _parse_pdf(pdf_bytes: bytes) -> dict[str, str]:
             for table in pdf_extract_tables(pdf_bytes):
                 if not table or len(table) < 2:
                     continue
+                col = _pick_model_column(table, model_hint)
                 for row in table:
                     if not row:
                         continue
                     cells = [(c or "").strip() for c in row]
-                    if len(cells) >= 2 and cells[0] and cells[1]:
-                        # Skip multi-model comparison headers
-                        if (len(cells) > 2 and cells[1] and cells[2]
-                            and not re.search(r"\d", cells[1])
-                            and re.search(r"\d", cells[2])):
-                            continue
-                        out.setdefault(cells[0], cells[1])
+                    if len(cells) < 2 or not cells[0]:
+                        continue
+                    if _is_header_row(cells):
+                        continue  # SKU header, not a spec
+                    vidx = col if (col is not None and col < len(cells)
+                                   and cells[col]) else 1
+                    if vidx < len(cells) and cells[vidx]:
+                        out.setdefault(cells[0], cells[vidx])
         except Exception as e:
             logger.debug("pdfplumber tables failed: %s", e)
 
@@ -279,7 +314,7 @@ def live_lookup(
     source_extractions: dict[str, dict[str, str]] = {}
     for url, content in pages.items():
         try:
-            kv = parse_source(url, content)
+            kv = parse_source(url, content, model_hint=query)
             if kv:
                 source_extractions[url] = kv
         except Exception as e:
@@ -295,6 +330,7 @@ def live_lookup(
     # model" yields something useful instead of nothing.
     model = _best_model_name(query, source_extractions)
     datasheet = _best_datasheet_url(pages) or (urls[0] if urls else None)
+    extras = _collect_extra_specs(source_extractions)
     rec = SpecRecord(
         vendor=(vendor or _vendor_from_sources(source_extractions)
                 or "Unknown").title(),
@@ -302,6 +338,7 @@ def live_lookup(
         features=extraction.features,
         datasheet_url=datasheet,
         image_url=_extract_image(pages),
+        extra_specs=extras,
         **{k: v for k, v in extraction.to_dict().items() if v is not None},
     )
 
@@ -403,3 +440,36 @@ def _extract_image(pages: dict[str, bytes]) -> Optional[str]:
         except Exception as e:
             logger.debug("Image extract from %s failed: %s", url, e)
     return None
+
+
+# Keys we deliberately drop from "extras" because they're either pure
+# SKU/header noise, navigation chrome, or already covered by structured fields.
+_EXTRA_SKIP = re.compile(
+    r"^(home|search|menu|share|cookie|privacy|terms|sitemap|copyright|"
+    r"contact|support|login|register|products?|switches?|datasheet)$",
+    re.IGNORECASE,
+)
+
+
+def _collect_extra_specs(sources: dict[str, dict[str, str]]) -> dict[str, str]:
+    """Every raw key/value pair across sources that didn't map to a schema
+    field. First-source-wins on duplicate keys; HTML/PDF noise filtered."""
+    extras: dict[str, str] = {}
+    for kv in sources.values():
+        for k, v in (kv or {}).items():
+            if not k or not v:
+                continue
+            ks = k.strip()
+            vs = v.strip() if isinstance(v, str) else str(v)
+            if not ks or not vs or len(ks) > 60 or len(vs) > 600:
+                continue
+            if _EXTRA_SKIP.match(ks):
+                continue
+            # Drop if this key maps to a structured schema field already
+            try:
+                if map_kv_to_record_fields({ks: vs}):
+                    continue
+            except Exception:
+                pass
+            extras.setdefault(ks, vs)
+    return extras

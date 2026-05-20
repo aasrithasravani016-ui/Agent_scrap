@@ -211,6 +211,11 @@ class SpecAgent:
                 d["features"] = json.loads(d["features"])
             except json.JSONDecodeError:
                 pass
+        if d.get("extra_specs"):
+            try:
+                d["extra_specs"] = json.loads(d["extra_specs"])
+            except (json.JSONDecodeError, TypeError):
+                d["extra_specs"] = {}
         return d
 
     # ---------- High-level operations ----------

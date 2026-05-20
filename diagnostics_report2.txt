@@ -1,0 +1,300 @@
+
+======================================================================
+  SWITCH SPEC AGENT - DIAGNOSTICS REPORT
+======================================================================
+  Started: 2026-05-20T00:39:44.895275
+
+======================================================================
+  STAGE 1 - Environment
+======================================================================
+  Python:    3.10.0
+  Platform:  macOS-26.4.1-arm64-arm-64bit
+  Directory: /Users/aasritha/agent/switch-spec-agent
+  Timestamp: 2026-05-20T00:39:44.901932
+  [PASS] Critical files present
+  [PASS] Has scrapers package
+  [PASS] Has firmware module
+  [PASS] Has firmware fetchers
+  [PASS] Has live fallback
+  [PASS] Has search module
+  [PASS] Has smoke test
+
+======================================================================
+  STAGE 2 - Smoke tests
+======================================================================
+  [PASS] Smoke tests  -- 0.2s,   19 passed, 0 failed, 19 total
+        
+        ============================================================
+          [PASS] parsers: parse_capacity_gbps converts Tbps
+          [PASS] parsers: parse_port_config sums multi-section configs
+          [PASS] parsers: parse_poe_standard recognizes 802.3bt as PoE++
+          [PASS] parsers: parse_buffer_mb handles GB and KB units
+          [PASS] parsers: detect_features finds common protocols
+          [PASS] parsers: map_kv_to_record_fields normalizes a Cisco-style table
+          [PASS] parsers: extract_spec_tables pulls KV from HTML
+          [PASS] agent: looks up by SKU
+          [PASS] agent: looks up by partial model name
+          [PASS] agent: features parsed to Python list
+          [PASS] agent: filter by vendor and PoE
+          [PASS] agent: format_spec returns readable text
+          [PASS] agent: format_spec handles missing record gracefully
+          [PASS] agent: raises clear error when DB missing
+          [PASS] live: source confidence ranks vendor PDFs highest
+          [PASS] live: merge picks high-confidence value on conflict
+          [PASS] live: agreement bonus boosts confidence
+          [PASS] scrapers: core vendor classes importable
+          [PASS] scrapers: every vendor scraper instantiates
+        ============================================================
+          19 passed, 0 failed, 19 total
+        
+
+======================================================================
+  STAGE 3 - Build database
+======================================================================
+  [SKIP] build_db.py SKIPPED to preserve the live 240-record image DB
+
+======================================================================
+  STAGE 4 - Database contents
+======================================================================
+  [PASS] Tables  -- ['switches', 'sqlite_sequence', 'firmware_versions']
+  Switches: 240 rows
+    Arista                    14
+    Cisco                     28
+    Dell                      5
+    Edge-Core                 1
+    Extreme                   1
+    Fortinet                  2
+    HPE Aruba                 5
+    Huawei                    1
+    Juniper                   7
+    MikroTik                  40
+    NVIDIA                    19
+    Netgear                   33
+    TP-Link                   76
+    Ubiquiti                  7
+    Zyxel                     1
+  Firmware: 77 versions
+    MikroTik        RouterOS                       15
+    NVIDIA          Cumulus Linux                  1
+    Ubiquiti        UniFi OS                       61
+
+======================================================================
+  STAGE 5 - Seeded lookups (offline, fast)
+======================================================================
+  [PASS] Seeded: Cisco Catalyst 9300-48P  -- 25ms
+  [PASS] Seeded: C9300-48P  -- 25ms
+  [PASS] Seeded: Arista 7050SX3-48YC8  -- 26ms
+  [PASS] Seeded: EX4400-48P  -- 24ms
+  [PASS] Seeded: USW-Pro-24-PoE  -- 24ms
+
+======================================================================
+  STAGE 6 - Live fallback (vendors WITH scrapers)
+======================================================================
+
+----------------------------------------------------------------------
+  Vendor: cisco
+----------------------------------------------------------------------
+  [PASS] Cisco Catalyst 9300-48P  -- 0.0s | Best match (high confidence):
+  [PASS] Cisco Nexus 9336C-FX2  -- 0.0s | Best match (high confidence):
+
+----------------------------------------------------------------------
+  Vendor: arista
+----------------------------------------------------------------------
+  [PASS] Arista 7050SX3-48YC8  -- 0.0s | Best match (high confidence):
+  [PASS] Arista 7280CR3-32D4  -- 0.0s | Best match (high confidence):
+
+----------------------------------------------------------------------
+  Vendor: juniper
+----------------------------------------------------------------------
+  [PASS] Juniper EX4400-48P  -- 0.0s | Best match (high confidence):
+  [PASS] Juniper QFX5120-48Y  -- 0.0s | Best match (high confidence):
+
+----------------------------------------------------------------------
+  Vendor: aruba
+----------------------------------------------------------------------
+  [PASS] Aruba 6300M-48G-PoE4+  -- 0.0s | Best match (high confidence):
+  [PASS] Aruba 8325-48Y8C  -- 0.0s | Best match (high confidence):
+
+----------------------------------------------------------------------
+  Vendor: dell
+----------------------------------------------------------------------
+  [PASS] Dell S5248F-ON  -- 7.5s | Not in the local DB — fetched live from the web (now cached for instant future l
+  [PASS] Dell Z9332F-ON  -- 0.0s | Best match (high confidence):
+
+----------------------------------------------------------------------
+  Vendor: nvidia
+----------------------------------------------------------------------
+  [PASS] NVIDIA SN4700  -- 0.0s | Best match (high confidence):
+  [PASS] NVIDIA SN5600  -- 0.0s | Best match (high confidence):
+
+----------------------------------------------------------------------
+  Vendor: extreme
+----------------------------------------------------------------------
+  [PASS] Extreme 5520-48W  -- 7.7s | Not in the local DB — fetched live from the web (now cached for instant future l
+  [PASS] Extreme 7520-48Y  -- 6.9s | Not in the local DB — fetched live from the web (now cached for instant future l
+
+----------------------------------------------------------------------
+  Vendor: huawei
+----------------------------------------------------------------------
+  [PASS] Huawei CE6865-48S8CQ-EI  -- 2.8s | Not in the local DB — fetched live from the web (now cached for instant future l
+  [PASS] Huawei S6730-H48X6C  -- 0.0s | Best match (high confidence):
+
+----------------------------------------------------------------------
+  Vendor: fortinet
+----------------------------------------------------------------------
+  [PASS] FortiSwitch-448E-FPOE  -- 0.0s | Best match (high confidence):
+  [PASS] FortiSwitch-1048E  -- 3.9s | Not in the local DB — fetched live from the web (now cached for instant future l
+
+----------------------------------------------------------------------
+  Vendor: ubiquiti
+----------------------------------------------------------------------
+  [PASS] USW-Pro-24-PoE  -- 0.0s | Best match (high confidence):
+  [PASS] USW-Enterprise-24-PoE  -- 0.0s | Best match (high confidence):
+
+----------------------------------------------------------------------
+  Vendor: mikrotik
+----------------------------------------------------------------------
+  [PASS] CRS326-24G-2S+RM  -- 0.0s | Best match (high confidence):
+  [PASS] CRS354-48G-4S+2Q+RM  -- 0.0s | Best match (high confidence):
+
+----------------------------------------------------------------------
+  Vendor: tplink
+----------------------------------------------------------------------
+  [PASS] TL-SG3428  -- 0.0s | Best match (high confidence):
+  [PASS] TL-SG3210XHP-M2  -- 4.4s | Not in the local DB — fetched live from the web (now cached for instant future l
+
+----------------------------------------------------------------------
+  Vendor: netgear
+----------------------------------------------------------------------
+  [WARN] M4350-48G4XF  -- unclear output, 29.1s
+  [PASS] GS752TPP  -- 4.2s | Not in the local DB — fetched live from the web (now cached for instant future l
+
+----------------------------------------------------------------------
+  Vendor: h3c
+----------------------------------------------------------------------
+  [PASS] H3C S6850-56HF  -- 4.7s | Not in the local DB — fetched live from the web (now cached for instant future l
+  [PASS] H3C S5560X-30C-EI  -- 2.7s | Not in the local DB — fetched live from the web (now cached for instant future l
+
+----------------------------------------------------------------------
+  Vendor: ruijie
+----------------------------------------------------------------------
+  [PASS] Ruijie RG-S6520-48ST6X-HI  -- 3.5s | Not in the local DB — fetched live from the web (now cached for instant future l
+  [WARN] Ruijie RG-S6920-4C  -- unclear output, 22.2s
+
+----------------------------------------------------------------------
+  Vendor: edgecore
+----------------------------------------------------------------------
+  [PASS] Edgecore AS7726-32X  -- 0.0s | Best match (high confidence):
+  [PASS] Edgecore AS9716-32D  -- 7.1s | Not in the local DB — fetched live from the web (now cached for instant future l
+
+----------------------------------------------------------------------
+  Vendor: zyxel
+----------------------------------------------------------------------
+  [PASS] Zyxel XGS4600-32F  -- 37.4s | Not in the local DB — fetched live from the web (now cached for instant future l
+  [PASS] Zyxel XS1930-12HP  -- 34.2s | Not in the local DB — fetched live from the web (now cached for instant future l
+
+----------------------------------------------------------------------
+  Vendor: lenovo
+----------------------------------------------------------------------
+  [WARN] Lenovo NE10032  -- unclear output, 15.5s
+  [PASS] Lenovo NE2572  -- 12.3s | Not in the local DB — fetched live from the web (now cached for instant future l
+
+======================================================================
+  STAGE 7 - Live fallback (vendors WITHOUT scrapers)
+======================================================================
+  [PASS] D-Link DGS-1520-28MP  -- 3.7s
+  [PASS] Allied Telesis AT-x550-18XSPQm  -- 1.7s
+  [PASS] Moxa EDS-G508E  -- 5.2s
+  [PASS] Hirschmann RSP30  -- 11.5s
+  [PASS] FS.com S5860-48SC  -- 37.5s
+  [PASS] Cambium cnMatrix EX2052-P  -- 8.0s
+
+======================================================================
+  STAGE 8 - Login-gated firmware (honest portal message)
+======================================================================
+  [PASS] Cisco Catalyst 9300-48P v17.6.4  -- honest message
+  [PASS] Arista 7050SX3-48YC8 v4.28.6M  -- honest message
+  [PASS] Juniper EX4400-48P v21.4R3  -- honest message
+  [PASS] Aruba 6300M-48G-PoE4+ v10.10.1000  -- honest message
+
+======================================================================
+  STAGE 9 - Firmware fetchers
+======================================================================
+
+----------------------------------------------------------------------
+  Firmware: mikrotik
+----------------------------------------------------------------------
+  [PASS] fetch_firmware mikrotik  -- 6.7s
+
+----------------------------------------------------------------------
+  Firmware: ubiquiti
+----------------------------------------------------------------------
+  [PASS] fetch_firmware ubiquiti  -- 0.2s
+
+----------------------------------------------------------------------
+  Firmware: cumulus
+----------------------------------------------------------------------
+  [PASS] fetch_firmware cumulus  -- 0.2s
+
+----------------------------------------------------------------------
+  Firmware: tplink
+----------------------------------------------------------------------
+  [FAIL] fetch_firmware tplink  -- exit=1
+        00:44:26 ERROR fetch_firmware  Unknown vendors: ['tplink']
+        00:44:26 ERROR fetch_firmware  Available: ['mikrotik', 'cumulus', 'ubiquiti']
+
+----------------------------------------------------------------------
+  Firmware: netgear
+----------------------------------------------------------------------
+  [FAIL] fetch_firmware netgear  -- exit=1
+        00:44:26 ERROR fetch_firmware  Unknown vendors: ['netgear']
+        00:44:26 ERROR fetch_firmware  Available: ['mikrotik', 'cumulus', 'ubiquiti']
+
+======================================================================
+  STAGE 10 - Firmware advisor (public vendors with data)
+======================================================================
+  [PASS] MikroTik CRS326-24G-2S+RM v7.10.2  -- structured diff produced
+  [PASS] USW-Pro-24-PoE v6.5.59  -- structured diff produced
+  [PASS] NVIDIA SN4700 v5.4.0  -- structured diff produced
+  [WARN] TL-SG3428 v1.0.0  -- unclear output
+        TP-Link Omada SDN firmware advice
+        =================================
+        
+          No public firmware source available for TP-Link Omada SDN at $0/no-LLM. Check the vendor's support site for release notes.
+        
+        [0 ms]
+  [WARN] M4350-48G4XF v13.0.5.20  -- unclear output
+        Extreme Licenses firmware advice
+        ================================
+        
+          No public firmware source available for Extreme Licenses at $0/no-LLM. Check the vendor's support site for release notes.
+        
+        [4 ms]
+
+======================================================================
+  STAGE 11 - Scraper discovery (3 vendors, --limit 2)
+======================================================================
+
+----------------------------------------------------------------------
+  Scraper: ubiquiti
+----------------------------------------------------------------------
+  [PASS] run_scrapers ubiquiti  -- 0.3s
+
+----------------------------------------------------------------------
+  Scraper: mikrotik
+----------------------------------------------------------------------
+  [PASS] run_scrapers mikrotik  -- 0.5s
+
+----------------------------------------------------------------------
+  Scraper: h3c
+----------------------------------------------------------------------
+  [PASS] run_scrapers h3c  -- 0.2s
+
+======================================================================
+  SUMMARY
+======================================================================
+  Pass:    66
+  Fail:    2
+  Warn:    5
+  Skip:    1
+  Elapsed: 283.0s

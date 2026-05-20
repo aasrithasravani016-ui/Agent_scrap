@@ -258,9 +258,20 @@ def _render_spec_detail(top: dict):
                  "Value": (", ".join(top[k]) if isinstance(top.get(k), list)
                            else top.get(k))}
                 for k, lbl in LABELS.items()
-                if k != "image_url" and top.get(k) not in (None, "")
+                if k not in ("image_url", "extra_specs")
+                and top.get(k) not in (None, "")
             ]
             st.table(rows)
+
+        extras = top.get("extra_specs") or {}
+        if isinstance(extras, dict) and extras:
+            with st.expander(
+                f"Additional details from datasheet ({len(extras)})",
+                expanded=True,
+            ):
+                st.caption("Extra fields the datasheet contains "
+                           "but the structured schema doesn't cover.")
+                st.table([{"Spec": k, "Value": v} for k, v in extras.items()])
 
 
 # ============================================================

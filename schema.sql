@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS switches (
     -- Source
     datasheet_url TEXT,
     image_url TEXT,           -- product image URL (linked, not stored bytes)
+    extra_specs TEXT,         -- JSON dict of additional datasheet fields not in the schema
     last_updated TEXT
 );
 

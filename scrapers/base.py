@@ -67,10 +67,16 @@ class SpecRecord:
     use_case: Optional[str] = None
     datasheet_url: Optional[str] = None
     image_url: Optional[str] = None
+    # Every raw key/value pair extracted from the source that didn't map
+    # to a schema field. Lets the UI show the rest of the datasheet
+    # inline instead of just linking out to it.
+    extra_specs: dict = field(default_factory=dict)
 
     def to_db_dict(self) -> dict:
         d = asdict(self)
         d["features"] = json.dumps(self.features) if self.features else None
+        d["extra_specs"] = (json.dumps(self.extra_specs)
+                            if self.extra_specs else None)
         return d
 
     def is_minimally_valid(self) -> bool:
