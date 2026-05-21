@@ -77,7 +77,7 @@ def main():
 
         try:
             rec = live_firmware_lookup(name, vendor_hint=name,
-                                       deadline_sec=8.0)
+                                       deadline_sec=15.0)
         except Exception as e:  # pragma: no cover
             print(f"  [{i:3d}/{total}] {name:34s} ERROR {type(e).__name__}")
             misses += 1

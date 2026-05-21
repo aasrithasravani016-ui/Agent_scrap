@@ -182,12 +182,37 @@ def list_firmware(vendor: str, nos: str, db_path: Path = DB_PATH) -> list[Firmwa
     ).fetchall()
     con.close()
     records = [_row_to_firmware(r) for r in rows]
-    # Sort by parsed version, newest first. Unparseable versions go last.
     return sorted(
         records,
         key=lambda r: (r.parsed.parts if r.parsed else (), r.version),
         reverse=True,
     )
+
+
+def vendor_latest_any(vendor: str, db_path: Path = DB_PATH) -> Optional[FirmwareRecord]:
+    """Return the newest cached firmware row for `vendor` across ALL nos
+    variants. Used as a vendor-level latest fallback when the more-specific
+    `(vendor, nos)` lookup is empty — this is exactly the case for the
+    51 vendors whose latest version came in via prefetch_firmware.py
+    (Tier-3 live web pointers stored under whatever nos the live page
+    reported)."""
+    if not db_path.exists():
+        return None
+    con = sqlite3.connect(db_path)
+    con.row_factory = sqlite3.Row
+    rows = con.execute(
+        "SELECT * FROM firmware_versions WHERE vendor=?",
+        (vendor,),
+    ).fetchall()
+    con.close()
+    if not rows:
+        return None
+    records = [_row_to_firmware(r) for r in rows]
+    records.sort(
+        key=lambda r: (r.parsed.parts if r.parsed else (), r.version),
+        reverse=True,
+    )
+    return records[0]
 
 
 def latest_firmware(
@@ -630,6 +655,32 @@ def advise(
     elif not nos and gated:
         nos = DEFAULT_GATED_NOS.get(vendor)
     if not nos:
+        # No known NOS — first check vendor-level cached latest (set by
+        # the prefetch). This answers "latest=X" without any live call.
+        vlatest = vendor_latest_any(vendor, db_path=db_path)
+        if vlatest is not None:
+            syn_cur = FirmwareRecord(
+                vendor=vendor, nos=vlatest.nos or vendor,
+                version=current_version,
+            )
+            syn_diff = FirmwareDiff(
+                current=syn_cur, target=vlatest, releases_behind=0,
+                intermediate_versions=[], new_features=[],
+                security_fixes=[], bug_fixes=[],
+                known_issues=[], deprecations=[],
+            )
+            return FirmwareAdvice(
+                vendor=vendor, nos=vlatest.nos or vendor,
+                current_version=current_version,
+                has_data=True,
+                message=(f"Latest cached firmware for {vendor}: "
+                         f"v{vlatest.version}"
+                         + (f" (released {vlatest.release_date})"
+                            if vlatest.release_date else "")
+                         + "."),
+                diff=syn_diff,
+            )
+
         # No known NOS for this vendor — try the live firmware fallback
         # so long-tail vendors (Westermo, Sophos, Tenda, Allied Telesis,
         # Pluribus, ...) still produce a useful pointer instead of a
@@ -663,6 +714,34 @@ def advise(
 
     # Then try the changelog diff (vendor-published release notes).
     diff = firmware_diff(vendor, nos, current_version, db_path=db_path)
+
+    # Vendor-level latest fallback: if the strict (vendor, nos) diff is
+    # empty, check whether we have ANY cached firmware row for this vendor
+    # (e.g. populated by prefetch_firmware.py via the live web). If so, we
+    # synthesize a minimal target so the advisor surfaces a real latest
+    # version even when we can't compute a per-NOS changelog.
+    vendor_latest = None
+    if not diff:
+        vendor_latest = vendor_latest_any(vendor, db_path=db_path)
+
+    def _synthetic_diff_from_latest(latest_rec: FirmwareRecord) -> Optional[FirmwareDiff]:
+        # Surface the cached latest unconditionally — the advisor's job is
+        # to tell the user what we know, not to silently drop data when
+        # their current is newer than our cached pointer. If current ≥
+        # latest, releases_behind stays 0 and the caller's message can say
+        # "you are at or newer than the cached latest".
+        synthetic_current = FirmwareRecord(
+            vendor=vendor, nos=nos or latest_rec.nos or vendor,
+            version=current_version,
+        )
+        return FirmwareDiff(
+            current=synthetic_current,
+            target=latest_rec,
+            releases_behind=0,
+            intermediate_versions=[],
+            new_features=[], security_fixes=[], bug_fixes=[],
+            known_issues=[], deprecations=[],
+        )
 
     if gated:
         portal = LOGIN_GATED_VENDORS[vendor]
@@ -705,6 +784,11 @@ def advise(
                     f"or the version string isn't in the NVD-recognized "
                     f"format. Full release notes require a vendor login."
                 )
+        # If we don't have a real release-note diff but we DO have a
+        # vendor-level latest from prefetch, attach a synthetic diff so the
+        # report shows "latest version" instead of "CVE only".
+        if not diff and vendor_latest is not None:
+            diff = _synthetic_diff_from_latest(vendor_latest)
         return FirmwareAdvice(
             vendor=vendor, nos=nos,
             current_version=current_version,
@@ -719,6 +803,25 @@ def advise(
 
     # Non-gated vendors: prefer the changelog diff, fall back to advisory data.
     if not diff:
+        # Vendor-level latest synthesized from any cached row (Tier-3
+        # live prefetch). Lets us answer "latest = X" without needing
+        # the strict (vendor, nos) diff path.
+        if vendor_latest is not None:
+            syn = _synthetic_diff_from_latest(vendor_latest)
+            if syn is not None:
+                return FirmwareAdvice(
+                    vendor=vendor, nos=nos,
+                    current_version=current_version,
+                    has_data=True,
+                    message=(f"Latest cached firmware for {vendor}: "
+                             f"v{vendor_latest.version}"
+                             + (f" (released {vendor_latest.release_date})"
+                                if vendor_latest.release_date else "")
+                             + ". Sourced from live web prefetch."),
+                    diff=syn,
+                    advisories=advisories,
+                    recommended_min_version=min_fix,
+                )
         if not list_firmware(vendor, nos, db_path=db_path):
             # Live firmware fallback — search the public web for the
             # latest version pointer + notes URL. Cached on success.
