@@ -789,6 +789,24 @@ def advise(
         # report shows "latest version" instead of "CVE only".
         if not diff and vendor_latest is not None:
             diff = _synthetic_diff_from_latest(vendor_latest)
+        # Login-gated vendors also benefit from the live web fallback when
+        # we have no cached latest version (e.g. Aruba ArubaOS-CX — the
+        # release notes are gated but the latest version number is often
+        # listed on a public support page). Without this, the UI sees
+        # "no latest" + (possibly) "no CVEs" and shows the dead-end
+        # "Couldn't reach vendor right now" message.
+        if not diff:
+            live_rec = _try_live_firmware(model or "", vendor)
+            if live_rec is not None:
+                diff = _synthetic_diff_from_latest(live_rec)
+                msg = (
+                    f"Latest publicly listed firmware for {vendor}: "
+                    f"v{live_rec.version}"
+                    + (f" (released {live_rec.release_date})"
+                       if live_rec.release_date else "")
+                    + ". Found via live web search; release notes still "
+                      "require a vendor login."
+                )
         return FirmwareAdvice(
             vendor=vendor, nos=nos,
             current_version=current_version,
@@ -822,6 +840,14 @@ def advise(
                     advisories=advisories,
                     recommended_min_version=min_fix,
                 )
+        # Live firmware fallback. The original guard
+        # (`not list_firmware(vendor, nos)`) only triggered when the
+        # firmware DB had zero rows for the exact (vendor, nos) — but the
+        # firmware DB can legitimately have rows for a sibling NOS (e.g.
+        # ArubaOS for "Aruba" while we're asked about ArubaOS-CX), in
+        # which case `diff` is still None but the fallback was being
+        # skipped. We now fire it whenever we couldn't produce a diff,
+        # which is the only condition the caller actually cares about.
         if not list_firmware(vendor, nos, db_path=db_path):
             # Live firmware fallback — search the public web for the
             # latest version pointer + notes URL. Cached on success.
