@@ -14,6 +14,7 @@ Structured flags (still supported):
     python cli.py --filter --vendor Arista --min-speed 100
 """
 import argparse
+import json
 import sys
 import time
 
@@ -164,6 +165,60 @@ def _wrap_latest_only(agent, model: str):
     )
 
 
+def _emit_json(agent: SpecAgent, args) -> None:
+    """Single-line JSON output for programmatic callers (Node/Express).
+
+    The last line of stdout is always a JSON object so callers can parse
+    it cheaply. Exit code stays 0 even on a miss — the JSON `ok` flag
+    carries the success signal.
+
+    Firmware advice is delegated entirely to firmware_advise — advisories,
+    vendor-level latest, and live fallback are all baked in there now,
+    so this layer just serializes the FirmwareAdvice dataclass.
+    """
+    import dataclasses
+    t0 = time.time()
+    try:
+        if args.firmware:
+            model, version = args.firmware
+            advice = agent.firmware_advise(model, version)
+            advice_dict = (dataclasses.asdict(advice)
+                           if dataclasses.is_dataclass(advice) else advice)
+            # Pull vendor/canonical-model from the spec lookup so the
+            # caller can use them even when the firmware DB is sparse
+            # for that NOS (the lookup is a cheap DB hit).
+            spec = agent.lookup(model, limit=1)
+            payload = {
+                "ok": True,  # advice is always returned; UI handles empties
+                "mode": "firmware",
+                "vendor": advice_dict.get("vendor")
+                          or (spec[0].get("vendor") if spec else ""),
+                "model": (spec[0].get("model") if spec else model),
+                "current_version": version,
+                "advice": advice_dict,
+                "elapsed_ms": int((time.time() - t0) * 1000),
+            }
+        else:
+            q = " ".join(args.query) if args.query else ""
+            if not q:
+                payload = {"ok": False, "error": "query required", "mode": "spec"}
+            else:
+                resp = agent.answer(q)
+                payload = {
+                    "ok": resp.get("type") in ("spec", "compare", "filter",
+                                               "vendors"),
+                    "mode": "spec",
+                    "query": q,
+                    "response": resp,
+                    "elapsed_ms": int((time.time() - t0) * 1000),
+                }
+    except Exception as exc:  # noqa: BLE001 — surface any failure to caller
+        payload = {"ok": False, "error": str(exc),
+                   "elapsed_ms": int((time.time() - t0) * 1000)}
+    sys.stdout.write(json.dumps(payload, default=str) + "\n")
+    sys.stdout.flush()
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description="Switch specification lookup agent")
     p.add_argument("query", nargs="*", help="Natural language query")
@@ -193,6 +248,9 @@ def main() -> None:
                    help="Output file for --bulk-firmware (default stdout).")
     p.add_argument("-v", "--verbose", action="store_true",
                    help="Enable debug logging (live fallback, scrapers)")
+    p.add_argument("--json", action="store_true",
+                   help="Emit a single JSON line on stdout (for programmatic "
+                        "callers); suppresses pretty-printing.")
     args = p.parse_args()
 
     if args.verbose:
@@ -204,6 +262,10 @@ def main() -> None:
             logging.basicConfig(level=logging.DEBUG)
 
     agent = SpecAgent(live=not args.no_live)
+
+    if args.json:
+        _emit_json(agent, args)
+        return
 
     if args.firmware:
         model, version = args.firmware
