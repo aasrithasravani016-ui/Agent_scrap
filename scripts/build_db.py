@@ -1,22 +1,38 @@
 """
 Build the switch specifications database from seed_data.json.
-Run this once to initialize, and again any time seed_data.json changes.
+
+This DESTROYS any existing data/switches.db (and the scraped models,
+firmware_versions, and security_advisories it contains).  Run this once to
+initialize the DB; afterwards prefer `run_scrapers.py` / `fetch_firmware.py`
+to add data incrementally.
+
+To rebuild on purpose, pass --force.
 """
+import argparse
 import json
 import sqlite3
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-ROOT = Path(__file__).parent
+ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = ROOT / "data" / "switches.db"
 SCHEMA_PATH = ROOT / "schema.sql"
 SEED_PATH = ROOT / "seed_data.json"
 
 
-def build():
+def build(force: bool = False):
     DB_PATH.parent.mkdir(exist_ok=True)
     if DB_PATH.exists():
-        DB_PATH.unlink()  # rebuild fresh
+        if not force:
+            print(
+                f"Refusing to overwrite existing {DB_PATH}.\n"
+                "Pass --force to wipe and rebuild from seed (this destroys\n"
+                "all scraped switches, firmware_versions, security_advisories).",
+                file=sys.stderr,
+            )
+            sys.exit(2)
+        DB_PATH.unlink()
 
     con = sqlite3.connect(DB_PATH)
     con.executescript(SCHEMA_PATH.read_text())
@@ -49,4 +65,8 @@ def build():
 
 
 if __name__ == "__main__":
-    build()
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--force", action="store_true",
+                    help="Wipe existing data/switches.db and rebuild from seed.")
+    build(force=ap.parse_args().force)

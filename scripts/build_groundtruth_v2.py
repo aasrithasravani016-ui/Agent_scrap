@@ -28,6 +28,8 @@ import time
 from collections import Counter
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
@@ -40,10 +42,15 @@ XLSX_OUT = ROOT / "switch_vendors_firmware_groundtruth_v2.xlsx"
 HTML_OUT = ROOT / "fleet_firmware_report_v2.html"
 
 
-def call_advisor(agent: SpecAgent, model: str, current: str) -> dict:
+def call_advisor(agent: SpecAgent, model: str, current: str,
+                 vendor: str = "") -> dict:
+    # Prefix the vendor name onto the query so the agent's alias map can
+    # disambiguate (otherwise "EX4400-48P" doesn't tell the agent it's
+    # Juniper, etc). This is the realistic shape of a CMDB row anyway.
+    query = f"{vendor} {model}".strip() if vendor else model
     try:
         t0 = time.time()
-        adv = agent.firmware_advise(model, current)
+        adv = agent.firmware_advise(query, current)
         ms = int((time.time() - t0) * 1000)
     except Exception as e:                                       # noqa: BLE001
         return {"ok": False, "ms": 0, "msg": f"{type(e).__name__}: {e}",
@@ -125,11 +132,16 @@ def load_csv():
 
 def main() -> None:
     rows = load_csv()
-    agent = SpecAgent(live=True)
+    # live=False: the live web fallback is unreliable (returns garbage
+    # version numbers for many vendors), so we exclude it from the
+    # ground-truth test. Only trusted Tier-1 fetcher data + NVD CVE data
+    # is allowed to shape the report.
+    agent = SpecAgent(live=False)
     results = []
     for i, r in enumerate(rows, 1):
         results.append(call_advisor(
-            agent, r["model"], r["current_firmware_version"]))
+            agent, r["model"], r["current_firmware_version"],
+            vendor=r.get("vendor", "")))
         if i % 50 == 0 or i == len(rows):
             print(f"  ran {i}/{len(rows)}", file=sys.stderr)
 

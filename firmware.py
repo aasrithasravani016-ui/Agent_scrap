@@ -190,12 +190,18 @@ def list_firmware(vendor: str, nos: str, db_path: Path = DB_PATH) -> list[Firmwa
 
 
 def vendor_latest_any(vendor: str, db_path: Path = DB_PATH) -> Optional[FirmwareRecord]:
-    """Return the newest cached firmware row for `vendor` across ALL nos
-    variants. Used as a vendor-level latest fallback when the more-specific
-    `(vendor, nos)` lookup is empty — this is exactly the case for the
-    51 vendors whose latest version came in via prefetch_firmware.py
-    (Tier-3 live web pointers stored under whatever nos the live page
-    reported)."""
+    """Return the newest cached firmware row for `vendor` ONLY when the
+    cache is trustworthy.
+
+    Trust rules (deliberately strict — accuracy beats coverage):
+      • Vendor has > 1 cached version → Tier-1 fetcher with a real
+        changelog. Trusted.
+      • Vendor has exactly 1 cached row AND that row has populated
+        new_features / security_fixes / bug_fixes → trusted.
+      • Otherwise the row came in via the live-web prefetch with a
+        loose regex; its version could be a sample, demo, or random
+        number on the page. We refuse to surface it.
+    """
     if not db_path.exists():
         return None
     con = sqlite3.connect(db_path)
@@ -208,6 +214,15 @@ def vendor_latest_any(vendor: str, db_path: Path = DB_PATH) -> Optional[Firmware
     if not rows:
         return None
     records = [_row_to_firmware(r) for r in rows]
+
+    # Trust filter — must pass at least one rule.
+    if len(records) <= 1:
+        only = records[0]
+        has_notes = bool(only.new_features or only.security_fixes
+                         or only.bug_fixes or only.known_issues)
+        if not has_notes:
+            return None  # don't trust a single un-annotated regex hit
+
     records.sort(
         key=lambda r: (r.parsed.parts if r.parsed else (), r.version),
         reverse=True,

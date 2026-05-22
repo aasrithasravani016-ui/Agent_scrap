@@ -11,9 +11,9 @@ For each vendor in vendors.json:
 Run sequentially (not parallel) to stay polite to Startpage / Mojeek and
 to avoid blowing through their rate limits.
 
-Usage:
-    python3 prefetch_firmware.py           # do all 134
-    python3 prefetch_firmware.py 20        # stop after 20
+Usage (from the project root):
+    python3 scripts/prefetch_firmware.py           # do all 134
+    python3 scripts/prefetch_firmware.py 20        # stop after 20
 """
 from __future__ import annotations
 
@@ -22,6 +22,8 @@ import sqlite3
 import sys
 import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from vendor_registry import by_canonical
 from live_firmware import live_firmware_lookup
@@ -32,7 +34,7 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 
-DB = Path(__file__).parent / "data" / "switches.db"
+DB = Path(__file__).resolve().parent.parent / "data" / "switches.db"
 TIER1_SKIP = {"MikroTik", "Ubiquiti", "NVIDIA"}   # already covered by Tier-1
 
 

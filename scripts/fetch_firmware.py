@@ -1,16 +1,21 @@
 """
 Fetch firmware version data from public vendor sources.
 
-Usage:
-    python fetch_firmware.py                 # all public vendors
-    python fetch_firmware.py mikrotik        # one vendor
-    python fetch_firmware.py mikrotik -v     # verbose
+Usage (from the project root):
+    python3 scripts/fetch_firmware.py                 # all public vendors
+    python3 scripts/fetch_firmware.py mikrotik        # one vendor
+    python3 scripts/fetch_firmware.py mikrotik -v     # verbose
+    python3 scripts/fetch_firmware.py nvd             # CVE data from NIST NVD
+    python3 scripts/fetch_firmware.py kev             # CISA actively-exploited overlay
 """
 from __future__ import annotations
 
 import argparse
 import logging
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from firmware_fetchers import REGISTRY, upsert_firmware
 

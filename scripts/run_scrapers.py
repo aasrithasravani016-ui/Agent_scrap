@@ -1,12 +1,12 @@
 """
 Run scrapers and ingest results into the DB.
 
-Usage:
-    python run_scrapers.py                       # run all vendors
-    python run_scrapers.py ubiquiti mikrotik     # run a subset
-    python run_scrapers.py --limit 10 ubiquiti   # limit pages per vendor
-    python run_scrapers.py --dry-run ubiquiti    # don't write to DB
-    python run_scrapers.py --rebuild             # rebuild DB from seed + scrapers
+Usage (run from the project root):
+    python3 scripts/run_scrapers.py                       # run all vendors
+    python3 scripts/run_scrapers.py ubiquiti mikrotik     # run a subset
+    python3 scripts/run_scrapers.py --limit 10 ubiquiti   # limit pages per vendor
+    python3 scripts/run_scrapers.py --dry-run ubiquiti    # don't write to DB
+    python3 scripts/run_scrapers.py --rebuild             # rebuild DB from seed + scrapers
 
 The HTTP layer caches every fetched page under ./data_cache/<vendor>/,
 so reruns are fast and you can iterate on the parsers without hammering
@@ -18,6 +18,10 @@ import argparse
 import logging
 import sys
 from pathlib import Path
+
+_HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(_HERE.parent))   # project root: agent/firmware/scrapers
+sys.path.insert(0, str(_HERE))           # sibling scripts (build_db, etc.)
 
 from scrapers import REGISTRY, upsert_records
 
@@ -49,7 +53,7 @@ def main():
     if args.rebuild:
         log.info("Rebuilding DB from seed data...")
         import build_db
-        build_db.build()
+        build_db.build(force=True)
 
     targets = args.vendors or list(REGISTRY.keys())
     unknown = [v for v in targets if v not in REGISTRY]

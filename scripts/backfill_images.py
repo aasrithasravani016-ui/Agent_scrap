@@ -6,18 +6,20 @@ fetch the page and extract a product image using the existing
 scrapers.parsers.find_product_image (og:image -> JSON-LD -> ranked <img>).
 Results are written incrementally so an interrupted run loses nothing.
 
-Run:
-    python3 backfill_images.py
+Run (from the project root):
+    python3 scripts/backfill_images.py
 """
 import concurrent.futures
 import sqlite3
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from live_extract import fetch_url
 from scrapers.parsers import find_product_image
 
-DB_PATH = Path(__file__).parent / "data" / "switches.db"
+DB_PATH = Path(__file__).resolve().parent.parent / "data" / "switches.db"
 MAX_WORKERS = 8
 TIMEOUT = 8
 

@@ -606,15 +606,22 @@ class SpecAgent:
         from firmware import advise as _advise, FirmwareAdvice
 
         # First try a full model lookup (gives us NOS from spec data).
+        # CRITICAL: only trust the lookup if the model tokens in the query
+        # actually appear in the matched row — otherwise the fuzzy fallback
+        # cross-attributes (e.g. 'CX 6300M-48G' fuzzy-matches Cisco '9300'
+        # and we'd return Cisco's firmware for an Aruba switch). Demand a
+        # token overlap before honouring the vendor.
         spec = self.lookup(query, limit=1)
         if spec:
             s = spec[0]
-            return _advise(
-                vendor=s.get("vendor", ""),
-                nos=s.get("nos"),
-                current_version=current_version,
-                model=s.get("model"),
-            )
+            tokens = self._extract_model_candidates(query)
+            if not tokens or self._token_in_record(s, tokens):
+                return _advise(
+                    vendor=s.get("vendor", ""),
+                    nos=s.get("nos"),
+                    current_version=current_version,
+                    model=s.get("model"),
+                )
 
         # No model match — fall back to vendor-only resolution. This is
         # what makes "Aruba" + "10.08.1000" work even without a specific
